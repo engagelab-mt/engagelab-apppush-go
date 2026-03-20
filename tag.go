@@ -7,6 +7,47 @@ import (
 	"strings"
 )
 
+// TagsGetResult is the response for listing all tags.
+type TagsGetResult struct {
+	Tags []string `json:"tags"`
+}
+
+// TagSetParam sets registration_ids for a tag.
+type TagSetParam struct {
+	RegistrationIDs *TagRegistrationIDs `json:"registration_ids"`
+}
+
+type TagRegistrationIDs struct {
+	Add    []string `json:"add,omitempty"`
+	Remove []string `json:"remove,omitempty"`
+}
+
+// TagsCountGetResult is the tag count result.
+type TagsCountGetResult struct {
+	TagsCount map[string]int64 `json:"tagsCount"`
+}
+
+// TagQuotaGetResult is the tag/alias quota information.
+type TagQuotaGetResult struct {
+	Data *TagQuotaData `json:"data,omitempty"`
+}
+
+type TagQuotaData struct {
+	TotalTagQuota      int64               `json:"totalTagQuota"`
+	UseTagQuota        int64               `json:"useTagQuota"`
+	TotalAliasQuota    int64               `json:"totalAliasQuota"`
+	UseAliasQuota      int64               `json:"useAliasQuota"`
+	TagUidQuotaDetails []TagUidQuotaDetail `json:"tagUidQuotaDetail,omitempty"`
+}
+
+type TagUidQuotaDetail struct {
+	TagName       string `json:"tagName"`
+	TotalUidQuota int64  `json:"totalUidQuota"`
+	UseUidQuota   int64  `json:"useUidQuota"`
+}
+
+// --- TagService ---
+
 type TagService struct {
 	client *Client
 }

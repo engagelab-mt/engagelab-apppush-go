@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+// AliasStatusGetResult is the response for querying alias registration_ids.
+type AliasStatusGetResult struct {
+	RegistrationIDs []string `json:"registration_ids,omitempty"`
+}
+
+// --- AliasService ---
+
 type AliasService struct {
 	client *Client
 }

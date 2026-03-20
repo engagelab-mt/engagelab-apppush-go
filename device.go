@@ -5,6 +5,37 @@ import (
 	"fmt"
 )
 
+// DeviceStatusGetParam is the request for querying device online status.
+type DeviceStatusGetParam struct {
+	RegistrationIDs []string `json:"registration_ids"`
+}
+
+// DeviceStatusGetResult is the result for a single device status.
+type DeviceStatusGetResult struct {
+	RegistrationID string `json:"regid,omitempty"`
+	Online         *bool  `json:"online,omitempty"`
+	LastOnlineTime string `json:"last_online_time,omitempty"`
+}
+
+// DeviceGetResult is the device info (tags + alias).
+type DeviceGetResult struct {
+	Tags  []string `json:"tags,omitempty"`
+	Alias string   `json:"alias,omitempty"`
+}
+
+// DeviceSetParam sets tags and alias for a device.
+type DeviceSetParam struct {
+	Tags  *DeviceSetTags `json:"tags,omitempty"`
+	Alias string         `json:"alias,omitempty"`
+}
+
+type DeviceSetTags struct {
+	Add    []string `json:"add,omitempty"`
+	Remove []string `json:"remove,omitempty"`
+}
+
+// --- DeviceService ---
+
 type DeviceService struct {
 	client *Client
 }

@@ -7,6 +7,21 @@ import (
 	"time"
 )
 
+// GroupPushParam for group push (inherits PushParam structure).
+type GroupPushParam = PushParam
+
+// GroupPushResult is the response for a group push request.
+type GroupPushResult struct {
+	GroupMsgID string                         `json:"group_msgid,omitempty"`
+	Successes  map[string]PushResult          `json:"-"`
+	Errors     map[string]GroupPushErrorDetail `json:"-"`
+}
+
+type GroupPushErrorDetail struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
 // GroupPushClient is a separate client for Group Push API.
 // It uses group-{groupKey}:{groupMasterSecret} for Basic Auth.
 type GroupPushClient struct {
