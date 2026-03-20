@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	engagelab "github.com/engagelab/engagelab-go"
+	engagelab "github.com/engagelab-mt/engagelab-apppush-go"
 )
 
 func main() {

@@ -5,7 +5,7 @@ EngageLab AppPush REST API 的 Go 语言 SDK，零第三方依赖，仅使用 Go
 ## 安装
 
 ```bash
-go get github.com/engagelab/engagelab-go
+go get github.com/engagelab-mt/engagelab-apppush-go
 ```
 
 ## 快速开始
@@ -18,7 +18,7 @@ import (
     "fmt"
     "log"
 
-    engagelab "github.com/engagelab/engagelab-go"
+    engagelab "github.com/engagelab-mt/engagelab-apppush-go"
 )
 
 func main() {
