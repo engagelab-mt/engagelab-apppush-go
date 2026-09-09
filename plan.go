@@ -30,11 +30,12 @@ type PushPlanListResult struct {
 }
 
 type PushPlanInfo struct {
-	PushID          string `json:"push_id,omitempty"`
+	PlanID          string `json:"plan_id,omitempty"`
 	PlanDescription string `json:"plan_description,omitempty"`
 	Count           int    `json:"count,omitempty"`
 	CreateTime      int64  `json:"create_time,omitempty"`
 	LastUsedTime    int64  `json:"last_used_time,omitempty"`
+	EntityTag       string `json:"entity_tag,omitempty"`
 }
 
 // PushPlanMsgQueryResult maps plan IDs to their message IDs.

@@ -2,6 +2,7 @@ package engagelab
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -25,8 +26,26 @@ type DeviceGetResult struct {
 
 // DeviceSetParam sets tags and alias for a device.
 type DeviceSetParam struct {
-	Tags  *DeviceSetTags `json:"tags,omitempty"`
-	Alias string         `json:"alias,omitempty"`
+	Tags  interface{} `json:"tags,omitempty"` // *DeviceSetTags or "" to clear all tags
+	Alias string      `json:"alias,omitempty"`
+}
+
+type DeviceTokenRegisterParam struct {
+	Platform       string   `json:"platform"`
+	Tokens         []string `json:"tokens"`
+	APNSProduction *bool    `json:"apns_production,omitempty"`
+}
+
+type DeviceTokenRegisterResult struct {
+	Results []DeviceTokenResult `json:"results"`
+}
+
+type DeviceTokenResult struct {
+	Token          string `json:"token"`
+	RegistrationID string `json:"registration_id,omitempty"`
+	IsNew          bool   `json:"is_new"`
+	Code           int    `json:"code"`
+	Message        string `json:"message,omitempty"`
 }
 
 type DeviceSetTags struct {
@@ -73,4 +92,29 @@ func (s *DeviceService) Set(ctx context.Context, registrationID string, param *D
 // DELETE /v4/devices/{registration_id}
 func (s *DeviceService) Delete(ctx context.Context, registrationID string) error {
 	return s.client.doDelete(ctx, fmt.Sprintf("/v4/devices/%s", registrationID), nil)
+}
+
+// RegisterToken registers vendor tokens and returns their EngageLab registration IDs.
+// POST /v4/devices/token/registration_id
+func (s *DeviceService) RegisterToken(ctx context.Context, param *DeviceTokenRegisterParam) (*DeviceTokenRegisterResult, error) {
+	if param == nil {
+		return nil, errors.New("device token register param is required")
+	}
+	if len(param.Tokens) < 1 || len(param.Tokens) > 500 {
+		return nil, errors.New("tokens length must be between 1 and 500")
+	}
+	if param.Platform != "android" && param.Platform != "ios" {
+		return nil, errors.New("platform must be android or ios")
+	}
+	if param.Platform == "ios" && param.APNSProduction == nil {
+		return nil, errors.New("apns_production is required for ios")
+	}
+	if param.Platform == "android" && param.APNSProduction != nil {
+		return nil, errors.New("apns_production must not be set for android")
+	}
+	var result DeviceTokenRegisterResult
+	if err := s.client.doPost(ctx, "/v4/devices/token/registration_id", param, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

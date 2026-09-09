@@ -46,8 +46,10 @@ func TestGroupPushClient_Send(t *testing.T) {
 			t.Errorf("From = %q, want %q", param.From, "group-app")
 		}
 
-		json.NewEncoder(w).Encode(GroupPushResult{
-			GroupMsgID: "gmsg_001",
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"group_msgid": "gmsg_001",
+			"app1":        map[string]interface{}{"request_id": "r1", "msg_id": "m1"},
+			"app2":        map[string]interface{}{"error": map[string]interface{}{"code": 1001, "message": "fail"}},
 		})
 	}))
 	defer ts.Close()
@@ -66,6 +68,9 @@ func TestGroupPushClient_Send(t *testing.T) {
 	}
 	if result.GroupMsgID != "gmsg_001" {
 		t.Errorf("GroupMsgID = %q", result.GroupMsgID)
+	}
+	if result.Successes["app1"].MsgID != "m1" || result.Errors["app2"].Code != 1001 {
+		t.Errorf("unexpected dynamic results: %#v", result)
 	}
 }
 

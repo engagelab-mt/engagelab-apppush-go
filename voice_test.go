@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -14,89 +15,67 @@ func TestVoiceService_Create(t *testing.T) {
 		if r.Method != http.MethodPost || r.URL.Path != "/v4/voices" {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
-		body, _ := io.ReadAll(r.Body)
-		var param VoiceParam
-		json.Unmarshal(body, &param)
-		if param.Language != "zh-CN" {
-			t.Errorf("Language = %q", param.Language)
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			t.Fatal(err)
 		}
-		json.NewEncoder(w).Encode(VoiceResult{
-			Language: "zh-CN",
-			Content:  "你的验证码是{code}",
-			TTSType:  "standard",
-		})
+		if r.FormValue("language") != "zh-CN" {
+			t.Errorf("language = %q", r.FormValue("language"))
+		}
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer file.Close()
+		data, _ := io.ReadAll(file)
+		if string(data) != "voice" {
+			t.Errorf("file = %q", data)
+		}
+		json.NewEncoder(w).Encode(VoiceResult{FileURL: "https://example.com/voice.mp3"})
 	}))
 	defer ts.Close()
 
-	c := NewClient("k", "s", WithBaseURL(ts.URL))
-	result, err := c.Voice.Create(context.Background(), &VoiceParam{
-		Language: "zh-CN",
-		Content:  "你的验证码是{code}",
-		TTSType:  "standard",
-	})
+	voiceFile, err := os.CreateTemp("", "voice-*.mp3")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	if result.Language != "zh-CN" {
-		t.Errorf("Language = %q", result.Language)
+	defer os.Remove(voiceFile.Name())
+	voiceFile.WriteString("voice")
+	voiceFile.Close()
+
+	c := NewClient("k", "s", WithBaseURL(ts.URL))
+	result, err := c.Voice.Create(context.Background(), "zh-CN", voiceFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FileURL == "" {
+		t.Fatalf("unexpected result: %#v", result)
 	}
 }
 
-func TestVoiceService_List(t *testing.T) {
+func TestVoiceService_ListGetDelete(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/v4/voices" {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v4/voices":
+			json.NewEncoder(w).Encode([]VoiceResult{{Language: "en", FileURL: "u"}})
+		case r.Method == http.MethodGet && r.URL.Path == "/v4/voices/en":
+			json.NewEncoder(w).Encode(VoiceResult{Language: "en", FileURL: "u"})
+		case r.Method == http.MethodDelete && r.URL.Path == "/v4/voices/en":
+			w.WriteHeader(http.StatusNoContent)
+		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(VoiceListResult{
-			Voices: []VoiceResult{
-				{Language: "zh-CN", Content: "test", TTSType: "standard"},
-				{Language: "en-US", Content: "test en", TTSType: "standard"},
-			},
-		})
 	}))
 	defer ts.Close()
-
 	c := NewClient("k", "s", WithBaseURL(ts.URL))
-	result, err := c.Voice.List(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	list, err := c.Voice.List(context.Background())
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list=%#v err=%v", list, err)
 	}
-	if len(result.Voices) != 2 {
-		t.Errorf("Voices len = %d, want 2", len(result.Voices))
+	result, err := c.Voice.Get(context.Background(), "en")
+	if err != nil || result.FileURL != "u" {
+		t.Fatalf("get=%#v err=%v", result, err)
 	}
-}
-
-func TestVoiceService_Get(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v4/voices/zh-CN" {
-			t.Errorf("path = %s", r.URL.Path)
-		}
-		json.NewEncoder(w).Encode(VoiceResult{Language: "zh-CN", Content: "hello"})
-	}))
-	defer ts.Close()
-
-	c := NewClient("k", "s", WithBaseURL(ts.URL))
-	result, err := c.Voice.Get(context.Background(), "zh-CN")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result.Language != "zh-CN" {
-		t.Errorf("Language = %q", result.Language)
-	}
-}
-
-func TestVoiceService_Delete(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete || r.URL.Path != "/v4/voices/en-US" {
-			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
-		}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer ts.Close()
-
-	c := NewClient("k", "s", WithBaseURL(ts.URL))
-	err := c.Voice.Delete(context.Background(), "en-US")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if err := c.Voice.Delete(context.Background(), "en"); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -152,8 +152,11 @@ func TestPushService_BatchByRegID(t *testing.T) {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		json.NewEncoder(w).Encode(BatchPushResult{
+			RateLimitInfo: &BatchPushRateLimitInfo{
+				Message: "Some requests were rate limited during batch processing", RateLimitOccurred: true,
+			},
 			Results: map[string]BatchPushSingleResult{
-				"regid1": {Target: "regid1", Success: true, MsgID: 100},
+				"regid1": {Target: "regid1", Success: false, Error: &BatchPushError{Code: 23008, Message: "Rate limit exceeded for the API"}},
 			},
 		})
 	}))
@@ -172,8 +175,11 @@ func TestPushService_BatchByRegID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if r, ok := result.Results["regid1"]; !ok || !r.Success {
-		t.Error("batch result missing or not successful for regid1")
+	if r, ok := result.Results["regid1"]; !ok || r.Error == nil || r.Error.Code != 23008 {
+		t.Error("batch result missing rate-limit error for regid1")
+	}
+	if result.RateLimitInfo == nil || !result.RateLimitInfo.RateLimitOccurred {
+		t.Error("batch rate_limit_info was not decoded")
 	}
 }
 

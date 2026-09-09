@@ -30,7 +30,7 @@ func TestNewClient_Defaults(t *testing.T) {
 	}
 
 	if c.Push == nil || c.Device == nil || c.Tag == nil || c.Alias == nil ||
-		c.Schedule == nil || c.Status == nil || c.Plan == nil || c.Voice == nil || c.Image == nil {
+		c.Schedule == nil || c.Status == nil || c.Plan == nil || c.Voice == nil || c.Image == nil || c.App == nil {
 		t.Error("one or more services are nil")
 	}
 }
@@ -44,6 +44,8 @@ func TestWithDataCenter(t *testing.T) {
 		{HongKong, "https://pushapi-hk.engagelab.com"},
 		{Virginia, "https://pushapi-usva.engagelab.com"},
 		{Frankfurt, "https://pushapi-defra.engagelab.com"},
+		{Japan, "https://pushapi-jpn.engagelab.com"},
+		{Brazil, "https://pushapi-bra.engagelab.com"},
 	}
 	for _, tt := range tests {
 		c := NewClient("k", "s", WithDataCenter(tt.dc))

@@ -97,8 +97,8 @@ func TestTagService_GetCount(t *testing.T) {
 		if r.URL.Path != "/v4/tags_count" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		if r.URL.Query().Get("tags") != "vip,beta" {
-			t.Errorf("tags = %q", r.URL.Query().Get("tags"))
+		if len(r.URL.Query()["tags"]) != 2 || r.URL.Query().Get("platform") != "android" {
+			t.Errorf("query = %q", r.URL.RawQuery)
 		}
 		json.NewEncoder(w).Encode(TagsCountGetResult{
 			TagsCount: map[string]int64{"vip": 100, "beta": 50},
@@ -107,7 +107,7 @@ func TestTagService_GetCount(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient("k", "s", WithBaseURL(ts.URL))
-	result, err := c.Tag.GetCount(context.Background(), []string{"vip", "beta"}, nil)
+	result, err := c.Tag.GetCount(context.Background(), []string{"vip", "beta"}, "android")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestTagService_GetDeviceStatus(t *testing.T) {
 		if r.URL.Path != "/v4/tags/vip/registration_ids/reg123" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(TagsGetResult{Tags: []string{"vip"}})
+		json.NewEncoder(w).Encode(TagStatusGetResult{Result: true})
 	}))
 	defer ts.Close()
 
@@ -130,8 +130,8 @@ func TestTagService_GetDeviceStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Tags) != 1 || result.Tags[0] != "vip" {
-		t.Errorf("tags = %v", result.Tags)
+	if !result.Result {
+		t.Errorf("result = %#v", result)
 	}
 }
 
@@ -152,7 +152,7 @@ func TestTagService_GetQuota(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient("k", "s", WithBaseURL(ts.URL))
-	result, err := c.Tag.GetQuota(context.Background(), []string{"vip"}, []string{"android"})
+	result, err := c.Tag.GetQuota(context.Background(), []string{"vip"}, "android")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

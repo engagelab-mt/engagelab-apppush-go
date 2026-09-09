@@ -50,8 +50,8 @@ func TestPlanService_List(t *testing.T) {
 		json.NewEncoder(w).Encode(PushPlanListResult{
 			Total: 5,
 			PushPlanInfo: []PushPlanInfo{
-				{PushID: "p1", PlanDescription: "plan one", Count: 10},
-				{PushID: "p2", PlanDescription: "plan two", Count: 20},
+				{PlanID: "p1", PlanDescription: "plan one", Count: 10},
+				{PlanID: "p2", PlanDescription: "plan two", Count: 20},
 			},
 		})
 	}))

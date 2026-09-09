@@ -94,8 +94,9 @@ func TestDeviceService_Set(t *testing.T) {
 		if param.Alias != "new_alias" {
 			t.Errorf("alias = %q, want %q", param.Alias, "new_alias")
 		}
-		if len(param.Tags.Add) != 1 || param.Tags.Add[0] != "vip" {
-			t.Error("tags add should contain 'vip'")
+		tags, ok := param.Tags.(map[string]interface{})
+		if !ok || tags["add"] == nil {
+			t.Errorf("unexpected tags: %#v", param.Tags)
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -154,5 +155,33 @@ func TestDeviceService_GetStatus_Error(t *testing.T) {
 	}
 	if apiErr.StatusCode != 403 {
 		t.Errorf("status = %d, want 403", apiErr.StatusCode)
+	}
+}
+
+func TestDeviceService_RegisterToken(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v4/devices/token/registration_id" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		var param DeviceTokenRegisterParam
+		if err := json.NewDecoder(r.Body).Decode(&param); err != nil {
+			t.Fatal(err)
+		}
+		if param.Platform != "android" || len(param.Tokens) != 1 {
+			t.Errorf("unexpected param: %#v", param)
+		}
+		json.NewEncoder(w).Encode(DeviceTokenRegisterResult{Results: []DeviceTokenResult{{
+			Token: "t1", RegistrationID: "r1", IsNew: true, Code: 0,
+		}, {
+			Token: "", IsNew: false, Code: 21003, Message: "invalid fcm token format",
+		}}})
+	}))
+	defer ts.Close()
+	c := NewClient("k", "s", WithBaseURL(ts.URL))
+	result, err := c.Device.RegisterToken(context.Background(), &DeviceTokenRegisterParam{
+		Platform: "android", Tokens: []string{"t1"},
+	})
+	if err != nil || len(result.Results) != 2 || result.Results[0].RegistrationID != "r1" || result.Results[1].Code != 21003 {
+		t.Fatalf("result=%#v err=%v", result, err)
 	}
 }

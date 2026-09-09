@@ -19,6 +19,7 @@ type UserStatusItem struct {
 	Time    string              `json:"time,omitempty"`
 	Android *UserStatusPlatform `json:"android,omitempty"`
 	IOS     *UserStatusPlatform `json:"ios,omitempty"`
+	HMOS    *UserStatusPlatform `json:"hmos,omitempty"`
 }
 
 type UserStatusPlatform struct {
@@ -29,6 +30,8 @@ type UserStatusPlatform struct {
 
 // MessageStatusGetResult is the response for message delivery statistics.
 type MessageStatusGetResult struct {
+	PlanID      string            `json:"plan_id,omitempty"`
+	PushContent interface{}       `json:"pushContent,omitempty"`
 	Targets     int64             `json:"targets"`
 	Sent        int64             `json:"sent"`
 	Delivered   int64             `json:"delivered"`
@@ -40,6 +43,9 @@ type MessageStatusGetResult struct {
 type MessageStatusSub struct {
 	Notification *MessageStatusDetail `json:"notification,omitempty"`
 	Message      *MessageStatusDetail `json:"message,omitempty"`
+	LiveActivity *MessageStatusDetail `json:"live_activity,omitempty"`
+	VoIP         *MessageStatusDetail `json:"voip,omitempty"`
+	InAppMessage *MessageStatusDetail `json:"inapp_message,omitempty"`
 }
 
 type MessageStatusDetail struct {
@@ -50,6 +56,7 @@ type MessageStatusDetail struct {
 	Click       int64                 `json:"click"`
 	SubAndroid  *MessageStatusAndroid `json:"sub_android,omitempty"`
 	SubIOS      *MessageStatusIOS     `json:"sub_ios,omitempty"`
+	SubHMOS     *MessageStatusHMOS    `json:"sub_hmos,omitempty"`
 }
 
 type MessageStatusAndroid struct {
@@ -68,6 +75,11 @@ type MessageStatusIOS struct {
 	APNS         *MessageStatusChannel `json:"apns,omitempty"`
 }
 
+type MessageStatusHMOS struct {
+	EngageLabHMOS *MessageStatusChannel `json:"engageLab_hmos,omitempty"`
+	HarmonyOS     *MessageStatusChannel `json:"harmonyos,omitempty"`
+}
+
 type MessageStatusChannel struct {
 	Targets     int64 `json:"targets"`
 	Sent        int64 `json:"sent"`
@@ -78,8 +90,13 @@ type MessageStatusChannel struct {
 
 // MessageLifecycleGetResult is the lifecycle status for a message on a device.
 type MessageLifecycleGetResult struct {
-	Status       string `json:"status,omitempty"`
-	ErrorMessage string `json:"error_message,omitempty"`
+	MessageID      string `json:"message_id,omitempty"`
+	RegistrationID string `json:"registration_id,omitempty"`
+	Status         string `json:"status,omitempty"`
+	ErrorMessage   string `json:"error_message,omitempty"`
+	ErrorCode      int    `json:"error_code,omitempty"`
+	ITime          int64  `json:"itime,omitempty"`
+	Channel        string `json:"channel,omitempty"`
 }
 
 // --- StatusService ---
@@ -132,10 +149,10 @@ func (s *StatusService) MessageLifecycle(ctx context.Context, messageID string, 
 
 // BatchMessageDetail returns delivery statistics for multiple messages (batch query).
 // GET /v4/status/batch/message?message_ids={}
-func (s *StatusService) BatchMessageDetail(ctx context.Context, messageIDs []string) (map[string]MessageStatusGetResult, error) {
+func (s *StatusService) BatchMessageDetail(ctx context.Context, messageIDs []string) ([]MessageLifecycleGetResult, error) {
 	query := url.Values{}
 	query.Set("message_ids", strings.Join(messageIDs, ","))
-	result := make(map[string]MessageStatusGetResult)
+	var result []MessageLifecycleGetResult
 	err := s.client.doGet(ctx, "/v4/status/batch/message", query, &result)
 	if err != nil {
 		return nil, err
@@ -145,12 +162,11 @@ func (s *StatusService) BatchMessageDetail(ctx context.Context, messageIDs []str
 
 // PlanDetail returns message statistics for a push plan.
 // GET /v4/status/plan/detail?plan_id={}&message_ids={}
-func (s *StatusService) PlanDetail(ctx context.Context, planID string, messageIDs []string) (map[string]MessageStatusGetResult, error) {
+func (s *StatusService) PlanDetail(ctx context.Context, planIDs []string, startDate, endDate string) (map[string]MessageStatusGetResult, error) {
 	query := url.Values{}
-	query.Set("plan_id", planID)
-	if len(messageIDs) > 0 {
-		query.Set("message_ids", strings.Join(messageIDs, ","))
-	}
+	query.Set("plan_ids", strings.Join(planIDs, ","))
+	query.Set("start_date", startDate)
+	query.Set("end_date", endDate)
 	result := make(map[string]MessageStatusGetResult)
 	err := s.client.doGet(ctx, "/v4/status/plan/detail", query, &result)
 	if err != nil {

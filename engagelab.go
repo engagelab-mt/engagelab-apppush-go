@@ -19,6 +19,8 @@ const (
 	HongKong  DataCenter = "https://pushapi-hk.engagelab.com"
 	Virginia  DataCenter = "https://pushapi-usva.engagelab.com"
 	Frankfurt DataCenter = "https://pushapi-defra.engagelab.com"
+	Japan     DataCenter = "https://pushapi-jpn.engagelab.com"
+	Brazil    DataCenter = "https://pushapi-bra.engagelab.com"
 )
 
 type Client struct {
@@ -35,6 +37,7 @@ type Client struct {
 	Plan     *PlanService
 	Voice    *VoiceService
 	Image    *ImageService
+	App      *AppService
 }
 
 type Option func(*Client)
@@ -85,6 +88,7 @@ func NewClient(appKey, masterSecret string, opts ...Option) *Client {
 	c.Plan = &PlanService{client: c}
 	c.Voice = &VoiceService{client: c}
 	c.Image = &ImageService{client: c}
+	c.App = &AppService{client: c}
 
 	return c
 }
