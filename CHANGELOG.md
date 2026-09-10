@@ -9,13 +9,18 @@
 ### 新增
 
 - 日本、巴西数据中心
-- Device Token 换取 Registration ID 与 App VIP 状态 API
+- Device Token 换取 Registration ID、App VIP 状态与批量消息生命周期 API
 
 ### 变更
 
 - 补齐 Push、Schedule、Status、Plan 和 Group Push 协议字段
 - Voice 改为官网 multipart 文件协议，OPPO Image 改为官网 JSON URL 协议
 - Tag 计数/配额及 Plan Detail 查询参数改为官网协议
+
+### 修复
+
+- 修正与官网不一致的 REST 路径、查询参数和响应字段映射
+- 补充请求序列化、响应解析及错误响应测试
 
 ## [0.1.0] - 2026-03-20
 
