@@ -100,18 +100,6 @@ func (s *DeviceService) RegisterToken(ctx context.Context, param *DeviceTokenReg
 	if param == nil {
 		return nil, errors.New("device token register param is required")
 	}
-	if len(param.Tokens) < 1 || len(param.Tokens) > 500 {
-		return nil, errors.New("tokens length must be between 1 and 500")
-	}
-	if param.Platform != "android" && param.Platform != "ios" {
-		return nil, errors.New("platform must be android or ios")
-	}
-	if param.Platform == "ios" && param.APNSProduction == nil {
-		return nil, errors.New("apns_production is required for ios")
-	}
-	if param.Platform == "android" && param.APNSProduction != nil {
-		return nil, errors.New("apns_production must not be set for android")
-	}
 	var result DeviceTokenRegisterResult
 	if err := s.client.doPost(ctx, "/v4/devices/token/registration_id", param, &result); err != nil {
 		return nil, err

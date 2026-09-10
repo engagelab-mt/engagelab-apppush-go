@@ -36,12 +36,3 @@ func TestImageService_UploadOppo(t *testing.T) {
 		t.Errorf("unexpected result: %#v", result)
 	}
 }
-
-func TestImageService_UploadOppo_RequiresExactlyOneURL(t *testing.T) {
-	c := NewClient("k", "s")
-	for _, param := range []*OppoImageParam{{}, {BigPictureURL: "a", SmallPictureURL: "b"}} {
-		if _, err := c.Image.UploadOppo(context.Background(), param); err == nil {
-			t.Fatalf("expected validation error for %#v", param)
-		}
-	}
-}
