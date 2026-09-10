@@ -96,6 +96,7 @@ groupClient.Send(ctx, param)
 ```go
 client.Device.Get(ctx, registrationID)         // 查询设备信息
 client.Device.Set(ctx, registrationID, param)  // 设置设备标签/别名
+client.Device.Set(ctx, registrationID, &engagelab.DeviceSetParam{ClearTags: true}) // 清空全部标签
 client.Device.Delete(ctx, registrationID)      // 删除设备
 client.Device.GetStatus(ctx, param)            // 查询设备在线状态
 client.Device.RegisterToken(ctx, param)        // Token 换取 Registration ID

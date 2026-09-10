@@ -2,6 +2,7 @@ package engagelab
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -26,8 +27,26 @@ type DeviceGetResult struct {
 
 // DeviceSetParam sets tags and alias for a device.
 type DeviceSetParam struct {
-	Tags  interface{} `json:"tags,omitempty"` // *DeviceSetTags or "" to clear all tags
-	Alias string      `json:"alias,omitempty"`
+	Tags      *DeviceSetTags `json:"-"`
+	ClearTags bool           `json:"-"`
+	Alias     string         `json:"alias,omitempty"`
+}
+
+// MarshalJSON emits tags as an object, or as an empty string when ClearTags is true.
+func (p DeviceSetParam) MarshalJSON() ([]byte, error) {
+	var tags interface{}
+	if p.ClearTags {
+		tags = ""
+	} else if p.Tags != nil {
+		tags = p.Tags
+	}
+	return json.Marshal(struct {
+		Tags  interface{} `json:"tags,omitempty"`
+		Alias string      `json:"alias,omitempty"`
+	}{
+		Tags:  tags,
+		Alias: p.Alias,
+	})
 }
 
 type DeviceTokenRegisterParam struct {

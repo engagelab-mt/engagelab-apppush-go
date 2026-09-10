@@ -14,6 +14,7 @@
 ### 变更
 
 - 补齐 Push、Schedule、Status、Plan 和 Group Push 协议字段
+- Device 标签更新恢复强类型 `Tags`，并通过 `ClearTags` 明确清空全部标签
 - Voice 改为官网 multipart 文件协议，OPPO Image 改为官网 JSON URL 协议
 - Tag 计数/配额及 Plan Detail 查询参数改为官网协议
 

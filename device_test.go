@@ -89,13 +89,15 @@ func TestDeviceService_Set(t *testing.T) {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		body, _ := io.ReadAll(r.Body)
-		var param DeviceSetParam
+		var param struct {
+			Tags  DeviceSetTags `json:"tags"`
+			Alias string        `json:"alias"`
+		}
 		json.Unmarshal(body, &param)
 		if param.Alias != "new_alias" {
 			t.Errorf("alias = %q, want %q", param.Alias, "new_alias")
 		}
-		tags, ok := param.Tags.(map[string]interface{})
-		if !ok || tags["add"] == nil {
+		if len(param.Tags.Add) != 1 || param.Tags.Add[0] != "vip" {
 			t.Errorf("unexpected tags: %#v", param.Tags)
 		}
 		w.WriteHeader(http.StatusOK)
@@ -110,6 +112,26 @@ func TestDeviceService_Set(t *testing.T) {
 		},
 	})
 	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeviceService_Set_ClearTags(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var param map[string]interface{}
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
+		if tags, ok := param["tags"].(string); !ok || tags != "" {
+			t.Errorf("unexpected tags: %#v", param["tags"])
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	c := NewClient("k", "s", WithBaseURL(ts.URL))
+	if err := c.Device.Set(context.Background(), "reg123", &DeviceSetParam{ClearTags: true}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
