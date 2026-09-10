@@ -25,12 +25,14 @@ func TestVoiceService_Create(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		data, _ := io.ReadAll(file)
 		if string(data) != "voice" {
 			t.Errorf("file = %q", data)
 		}
-		json.NewEncoder(w).Encode(VoiceResult{FileURL: "https://example.com/voice.mp3"})
+		if err := json.NewEncoder(w).Encode(VoiceResult{FileURL: "https://example.com/voice.mp3"}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -38,9 +40,13 @@ func TestVoiceService_Create(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(voiceFile.Name())
-	voiceFile.WriteString("voice")
-	voiceFile.Close()
+	defer func() { _ = os.Remove(voiceFile.Name()) }()
+	if _, err := voiceFile.WriteString("voice"); err != nil {
+		t.Fatal(err)
+	}
+	if err := voiceFile.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	c := NewClient("k", "s", WithBaseURL(ts.URL))
 	result, err := c.Voice.Create(context.Background(), "zh-CN", voiceFile.Name())
@@ -56,9 +62,9 @@ func TestVoiceService_ListGetDelete(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v4/voices":
-			json.NewEncoder(w).Encode([]VoiceResult{{Language: "en", FileURL: "u"}})
+			encodeJSON(t, w, []VoiceResult{{Language: "en", FileURL: "u"}})
 		case r.Method == http.MethodGet && r.URL.Path == "/v4/voices/en":
-			json.NewEncoder(w).Encode(VoiceResult{Language: "en", FileURL: "u"})
+			encodeJSON(t, w, VoiceResult{Language: "en", FileURL: "u"})
 		case r.Method == http.MethodDelete && r.URL.Path == "/v4/voices/en":
 			w.WriteHeader(http.StatusNoContent)
 		default:

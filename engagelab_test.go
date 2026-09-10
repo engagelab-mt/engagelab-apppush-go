@@ -11,10 +11,11 @@ import (
 	"time"
 )
 
-func newTestServer(handler http.HandlerFunc) (*httptest.Server, *Client) {
-	ts := httptest.NewServer(handler)
-	c := NewClient("test-key", "test-secret", WithBaseURL(ts.URL))
-	return ts, c
+func encodeJSON(t *testing.T, w io.Writer, value interface{}) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestNewClient_Defaults(t *testing.T) {
@@ -100,7 +101,9 @@ func TestDoRequest_PostBody(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var data map[string]string
-		json.Unmarshal(body, &data)
+		if err := json.Unmarshal(body, &data); err != nil {
+			t.Fatal(err)
+		}
 		if data["key"] != "value" {
 			t.Errorf("request body key = %q, want %q", data["key"], "value")
 		}
@@ -115,7 +118,9 @@ func TestDoRequest_PostBody(t *testing.T) {
 func TestDoRequest_ParsesResponse(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"msg_id": "12345"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"msg_id": "12345"}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -133,12 +138,14 @@ func TestDoRequest_ParsesResponse(t *testing.T) {
 func TestDoRequest_ApiError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": map[string]interface{}{
 				"code":    1003,
 				"message": "auth failed",
 			},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -183,7 +190,7 @@ func TestDoGet_QueryParams(t *testing.T) {
 			t.Errorf("query page = %q, want %q", r.URL.Query().Get("page"), "1")
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}"))
+		_, _ = w.Write([]byte("{}"))
 	}))
 	defer ts.Close()
 
@@ -210,7 +217,7 @@ func TestDoPut_Method(t *testing.T) {
 			t.Errorf("method = %s, want PUT", r.Method)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}"))
+		_, _ = w.Write([]byte("{}"))
 	}))
 	defer ts.Close()
 

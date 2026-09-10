@@ -41,16 +41,20 @@ func TestGroupPushClient_Send(t *testing.T) {
 
 		body, _ := io.ReadAll(r.Body)
 		var param GroupPushParam
-		json.Unmarshal(body, &param)
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if param.From != "group-app" {
 			t.Errorf("From = %q, want %q", param.From, "group-app")
 		}
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"group_msgid": "gmsg_001",
 			"app1":        map[string]interface{}{"request_id": "r1", "msg_id": "m1"},
 			"app2":        map[string]interface{}{"error": map[string]interface{}{"code": 1001, "message": "fail"}},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -77,9 +81,11 @@ func TestGroupPushClient_Send(t *testing.T) {
 func TestGroupPushClient_Send_Error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": map[string]interface{}{"code": 1003, "message": "auth failed"},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 

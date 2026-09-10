@@ -28,7 +28,7 @@ func (s *VoiceService) Create(ctx context.Context, language, filePath string) (*
 	if err != nil {
 		return nil, fmt.Errorf("open voice file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	if err := writer.WriteField("language", language); err != nil {
@@ -55,7 +55,7 @@ func (s *VoiceService) Create(ctx context.Context, language, filePath string) (*
 	if err != nil {
 		return nil, fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)

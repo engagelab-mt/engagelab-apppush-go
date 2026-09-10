@@ -20,17 +20,21 @@ func TestDeviceService_GetStatus(t *testing.T) {
 
 		body, _ := io.ReadAll(r.Body)
 		var param DeviceStatusGetParam
-		json.Unmarshal(body, &param)
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if len(param.RegistrationIDs) != 2 {
 			t.Errorf("registration_ids len = %d, want 2", len(param.RegistrationIDs))
 		}
 
 		online := true
 		offline := false
-		json.NewEncoder(w).Encode([]DeviceStatusGetResult{
+		if err := json.NewEncoder(w).Encode([]DeviceStatusGetResult{
 			{RegistrationID: "reg1", Online: &online, LastOnlineTime: "2025-01-01 12:00:00"},
 			{RegistrationID: "reg2", Online: &offline, LastOnlineTime: "2025-01-01 11:00:00"},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -60,10 +64,12 @@ func TestDeviceService_Get(t *testing.T) {
 		if r.URL.Path != "/v4/devices/reg123" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(DeviceGetResult{
+		if err := json.NewEncoder(w).Encode(DeviceGetResult{
 			Tags:  []string{"tag1", "tag2"},
 			Alias: "user_alias",
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -93,7 +99,9 @@ func TestDeviceService_Set(t *testing.T) {
 			Tags  DeviceSetTags `json:"tags"`
 			Alias string        `json:"alias"`
 		}
-		json.Unmarshal(body, &param)
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if param.Alias != "new_alias" {
 			t.Errorf("alias = %q, want %q", param.Alias, "new_alias")
 		}
@@ -158,9 +166,11 @@ func TestDeviceService_Delete(t *testing.T) {
 func TestDeviceService_GetStatus_Error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": map[string]interface{}{"code": 1004, "message": "forbidden"},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -192,11 +202,13 @@ func TestDeviceService_RegisterToken(t *testing.T) {
 		if param.Platform != "android" || len(param.Tokens) != 1 {
 			t.Errorf("unexpected param: %#v", param)
 		}
-		json.NewEncoder(w).Encode(DeviceTokenRegisterResult{Results: []DeviceTokenResult{{
+		if err := json.NewEncoder(w).Encode(DeviceTokenRegisterResult{Results: []DeviceTokenResult{{
 			Token: "t1", RegistrationID: "r1", IsNew: true, Code: 0,
 		}, {
 			Token: "", IsNew: false, Code: 21003, Message: "invalid fcm token format",
-		}}})
+		}}}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 	c := NewClient("k", "s", WithBaseURL(ts.URL))

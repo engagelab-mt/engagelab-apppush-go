@@ -2,7 +2,6 @@ package engagelab
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +21,7 @@ func TestStatusService_Users(t *testing.T) {
 		if r.URL.Query().Get("duration") != "7" {
 			t.Errorf("duration = %q", r.URL.Query().Get("duration"))
 		}
-		json.NewEncoder(w).Encode(UserStatusGetResult{
+		encodeJSON(t, w, UserStatusGetResult{
 			TimeUnit: "DAY",
 			Start:    "2025-01-01",
 			Duration: 7,
@@ -61,7 +60,7 @@ func TestStatusService_MessageDetail(t *testing.T) {
 		if r.URL.Query().Get("message_ids") != "msg1,msg2" {
 			t.Errorf("message_ids = %q", r.URL.Query().Get("message_ids"))
 		}
-		json.NewEncoder(w).Encode(map[string]MessageStatusGetResult{
+		encodeJSON(t, w, map[string]MessageStatusGetResult{
 			"msg1": {Targets: 1000, Sent: 990, Delivered: 900, Sub: &MessageStatusSub{
 				Notification: &MessageStatusDetail{SubHMOS: &MessageStatusHMOS{
 					HarmonyOS: &MessageStatusChannel{Delivered: 12},
@@ -97,7 +96,7 @@ func TestStatusService_MessageLifecycle(t *testing.T) {
 		if r.URL.Query().Get("message_id") != "msg1" {
 			t.Errorf("message_id = %q", r.URL.Query().Get("message_id"))
 		}
-		json.NewEncoder(w).Encode(map[string]MessageLifecycleGetResult{
+		encodeJSON(t, w, map[string]MessageLifecycleGetResult{
 			"reg1": {Status: "delivered"},
 			"reg2": {Status: "failed", ErrorMessage: "device offline"},
 		})
@@ -122,7 +121,7 @@ func TestStatusService_BatchMessageDetail(t *testing.T) {
 		if r.URL.Path != "/v4/status/batch/message" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode([]MessageLifecycleGetResult{{MessageID: "msg1", Status: "sent"}})
+		encodeJSON(t, w, []MessageLifecycleGetResult{{MessageID: "msg1", Status: "sent"}})
 	}))
 	defer ts.Close()
 
@@ -144,7 +143,7 @@ func TestStatusService_PlanDetail(t *testing.T) {
 		if r.URL.Query().Get("plan_ids") != "plan1" {
 			t.Errorf("plan_ids = %q", r.URL.Query().Get("plan_ids"))
 		}
-		json.NewEncoder(w).Encode(map[string]MessageStatusGetResult{
+		encodeJSON(t, w, map[string]MessageStatusGetResult{
 			"msg1": {Targets: 200, Delivered: 180},
 		})
 	}))
@@ -165,7 +164,7 @@ func TestStatusService_PlanDetail_Query(t *testing.T) {
 		if r.URL.Query().Get("start_date") != "2026-01-01" || r.URL.Query().Get("end_date") != "2026-01-31" {
 			t.Errorf("unexpected query: %s", r.URL.RawQuery)
 		}
-		json.NewEncoder(w).Encode(map[string]MessageStatusGetResult{})
+		encodeJSON(t, w, map[string]MessageStatusGetResult{})
 	}))
 	defer ts.Close()
 

@@ -14,7 +14,7 @@ func TestTagService_List(t *testing.T) {
 		if r.Method != http.MethodGet || r.URL.Path != "/v4/tags" {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(TagsGetResult{Tags: []string{"vip", "test", "beta"}})
+		encodeJSON(t, w, TagsGetResult{Tags: []string{"vip", "test", "beta"}})
 	}))
 	defer ts.Close()
 
@@ -35,7 +35,9 @@ func TestTagService_Set(t *testing.T) {
 		}
 		body, _ := io.ReadAll(r.Body)
 		var param TagSetParam
-		json.Unmarshal(body, &param)
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if len(param.RegistrationIDs.Add) != 2 {
 			t.Errorf("add count = %d, want 2", len(param.RegistrationIDs.Add))
 		}
@@ -100,7 +102,7 @@ func TestTagService_GetCount(t *testing.T) {
 		if len(r.URL.Query()["tags"]) != 2 || r.URL.Query().Get("platform") != "android" {
 			t.Errorf("query = %q", r.URL.RawQuery)
 		}
-		json.NewEncoder(w).Encode(TagsCountGetResult{
+		encodeJSON(t, w, TagsCountGetResult{
 			TagsCount: map[string]int64{"vip": 100, "beta": 50},
 		})
 	}))
@@ -121,7 +123,7 @@ func TestTagService_GetDeviceStatus(t *testing.T) {
 		if r.URL.Path != "/v4/tags/vip/registration_ids/reg123" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(TagStatusGetResult{Result: true})
+		encodeJSON(t, w, TagStatusGetResult{Result: true})
 	}))
 	defer ts.Close()
 
@@ -140,7 +142,7 @@ func TestTagService_GetQuota(t *testing.T) {
 		if r.URL.Path != "/v4/tags/quota-info" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(TagQuotaGetResult{
+		encodeJSON(t, w, TagQuotaGetResult{
 			Data: &TagQuotaData{
 				TotalTagQuota:   1000,
 				UseTagQuota:     100,

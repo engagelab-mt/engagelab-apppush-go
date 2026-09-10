@@ -23,7 +23,9 @@ func TestImageService_UploadOppo(t *testing.T) {
 		if param.BigPictureURL != "https://example.com/big.png" || param.SmallPictureURL != "" {
 			t.Errorf("unexpected param: %#v", param)
 		}
-		json.NewEncoder(w).Encode(ImageUploadResult{BigPictureID: "big_001"})
+		if err := json.NewEncoder(w).Encode(ImageUploadResult{BigPictureID: "big_001"}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 

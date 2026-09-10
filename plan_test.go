@@ -16,11 +16,15 @@ func TestPlanService_CreateOrUpdate(t *testing.T) {
 		}
 		body, _ := io.ReadAll(r.Body)
 		var param PushPlanParam
-		json.Unmarshal(body, &param)
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if param.PlanDescription != "test plan" {
 			t.Errorf("PlanDescription = %q", param.PlanDescription)
 		}
-		json.NewEncoder(w).Encode(PushPlanResult{PlanID: "plan_001"})
+		if err := json.NewEncoder(w).Encode(PushPlanResult{PlanID: "plan_001"}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -47,13 +51,15 @@ func TestPlanService_List(t *testing.T) {
 		if r.URL.Query().Get("page_size") != "10" {
 			t.Errorf("page_size = %q", r.URL.Query().Get("page_size"))
 		}
-		json.NewEncoder(w).Encode(PushPlanListResult{
+		if err := json.NewEncoder(w).Encode(PushPlanListResult{
 			Total: 5,
 			PushPlanInfo: []PushPlanInfo{
 				{PlanID: "p1", PlanDescription: "plan one", Count: 10},
 				{PlanID: "p2", PlanDescription: "plan two", Count: 20},
 			},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -78,7 +84,9 @@ func TestPlanService_List_WithFilters(t *testing.T) {
 		if r.URL.Query().Get("search_description") != "promo" {
 			t.Errorf("search_description = %q", r.URL.Query().Get("search_description"))
 		}
-		json.NewEncoder(w).Encode(PushPlanListResult{Total: 1})
+		if err := json.NewEncoder(w).Encode(PushPlanListResult{Total: 1}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -101,7 +109,9 @@ func TestPlanService_QueryMsg(t *testing.T) {
 		result := PushPlanMsgQueryResult{
 			"p1": PlanMsgInfo{MsgIDs: []string{"m1", "m2"}},
 		}
-		json.NewEncoder(w).Encode(result)
+		if err := json.NewEncoder(w).Encode(result); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -120,7 +130,9 @@ func TestPlanService_Delete(t *testing.T) {
 		if r.Method != http.MethodDelete || r.URL.Path != "/v4/push_plan/plan_001" {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(PushPlanDeleteResult{PlanID: "plan_001"})
+		if err := json.NewEncoder(w).Encode(PushPlanDeleteResult{PlanID: "plan_001"}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 

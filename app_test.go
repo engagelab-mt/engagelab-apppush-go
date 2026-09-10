@@ -13,7 +13,9 @@ func TestAppService_GetVIPStatus(t *testing.T) {
 		if r.Method != http.MethodGet || r.URL.Path != "/v4/app/vip/status" {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(AppVIPStatusResult{VIPStatus: 1, VIPEndTime: 1775059200})
+		if err := json.NewEncoder(w).Encode(AppVIPStatusResult{VIPStatus: 1, VIPEndTime: 1775059200}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 	c := NewClient("k", "s", WithBaseURL(ts.URL))
