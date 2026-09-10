@@ -8,30 +8,35 @@
 
 ### 新增
 
-- 新增日本、巴西数据中心常量，可按应用所属接入点选择对应 AppPush 地址。
-- 新增 `Device.RegisterToken`，适配 `POST /v4/devices/token/registration_id`；请求支持 `platform`、`tokens`、`apns_production`，结果支持每个 Token 的 `registration_id`、`is_new`、`code`、`message`。
-- 新增 `App.GetVIPStatus` 并挂载到 `Client.App`，映射 `vip_status` 和 `vip_end_time`。
+- `DataCenter`：新增 `Japan`和`Brazil`，用于连接部署在日本、巴西数据中心的应用。
+- `Device.RegisterToken`：新增厂商 Token 注册能力；`DeviceTokenRegisterResult`可获取每个 Token 对应的 Registration ID、是否首次创建、错误码和错误信息。
+- `App.GetVIPStatus`：新增应用 VIP 状态和到期时间查询，通过`Client.App`调用。
 
 ### 变更
 
-- Push 请求模型补齐 `body.voip`、Android `badge_set_num/is_fold`、Message `test_message/receipt_id`、Options `auto_truncation`。
-- `notification.alert`、Android `alert` 和 `message.msg_content`支持官网定义的字符串或 JSON Object；VoIP 与厂商扩展继续使用动态 map。
-- Batch Push 响应补齐逐目标 `error.code/error.message`及顶层`rate_limit_info`，可以识别 HTTP 200 下的部分失败和限流。
-- Group Push 按顶层动态 AppKey 解析成功与失败结果，分别写入 `Successes`、`Errors`，并保留 `GroupMsgID`。
-- Device 标签更新恢复强类型 `Tags *DeviceSetTags`；`ClearTags`为 `true` 时序列化为`tags:""`以清空全部标签。
-- Schedule 新增 `TriggerIntelligent.backup_time`，创建和更新定时任务均复用补齐后的 Push 模型。
-- Tag-device 查询改为返回`TagStatusGetResult.Result`；Tag 计数和配额接口改为`[]string tags + 单个 platform`，tags 使用 repeated-key query。
-- Status Detail 补齐 `plan_id`、`pushContent`、`live_activity`、`voip`、`inapp_message`、`sub_hmos`及 HMOS 渠道数据；消息生命周期补齐`error_code/itime/channel`。
-- Batch Message Lifecycle 返回类型修正为`[]MessageLifecycleGetResult`，并补齐`message_id`和`registration_id`。
-- Plan Detail 查询参数修正为`plan_ids/start_date/end_date`；Push Plan 列表字段由错误的`push_id`改为`plan_id`并增加`entity_tag`。
-- Voice `Create`由 JSON 文本参数改为官网`language + file` multipart 上传；列表改为数组响应，单项结果补齐`file_url`。
-- OPPO Image 由 multipart 文件上传改为 JSON URL 请求，使用`big_picture_url/small_picture_url`并映射`big_picture_id/small_picture_id`；移除不符合官网协议的`UploadOppoFromReader`。
-- Device Token 和 OPPO Image 的数量、平台、条件及二选一业务约束交由服务端校验，SDK 沿用`ApiError`返回错误。
+- `Push.Send`、`Push.Validate`、Batch Push、Group Push 和 Schedule 推送参数：新增`PushBody.VoIP`、Android`BadgeSetNum/IsFold`、Message`TestMessage/ReceiptID`、Options`AutoTruncation`。
+- `NotificationMessage`、`AndroidNotification`和`CustomMessage`：通知内容及自定义消息内容支持字符串或结构化 JSON 对象。
+- `Push.BatchByRegID`和`Push.BatchByAlias`：`BatchPushResult`新增逐目标错误及限流信息，可识别请求成功时返回的部分失败。
+- `GroupPushClient.Send`：`GroupPushResult.Successes`和`Errors`可按 AppKey 获取各应用结果，同时保留`GroupMsgID`。
+- `Device.Set`：`DeviceSetParam.Tags`使用强类型`*DeviceSetTags`；设置`ClearTags: true`可清空设备全部标签。
+- `Schedule.Create`和`Schedule.Update`：新增`TriggerIntelligent.BackupTime`智能定时配置。
+- `Tag.GetDeviceStatus`：改为返回`TagStatusGetResult.Result`，用于判断设备是否拥有指定标签。
+- `Tag.GetCount`和`Tag.GetQuota`：参数改为`[]string tags`和单个`platform`。
+- `Status.MessageDetail`：结果新增 Plan ID、推送内容、Live Activity、VoIP、应用内消息、HMOS 小计及 HMOS 渠道统计。
+- `Status.MessageLifecycle`：结果新增`ErrorCode`、`ITime`和`Channel`。
+- `Status.BatchMessageDetail`：返回值改为`[]MessageLifecycleGetResult`，每项包含`MessageID`和`RegistrationID`。
+- `Status.PlanDetail`：参数改为`[]string planIDs, string startDate, string endDate`。
+- `Plan.List`：`PushPlanInfo`使用`PlanID`并新增`EntityTag`；创建时间和最后使用时间继续使用毫秒时间戳。
+- `Voice.Create`：参数改为`language, filePath`并上传本地语音文件；`Voice.List`返回`[]VoiceResult`，`Voice.Get`结果新增`FileURL`。
+- `Image.UploadOppo`：参数改为`*OppoImageParam`，通过大图或小图 URL 上传，结果返回对应的图片 ID；不符合要求的参数通过既有`ApiError`返回。
+- `Image.UploadOppoFromReader`：已移除，请改用`Image.UploadOppo`。
+- `Device.RegisterToken`：数量、平台和 APNs 条件不在客户端提前拦截，服务端错误继续通过`ApiError`返回。
 
 ### 修复
 
-- 修正 Tag、Status、Plan、Voice、Image 和 Group Push 中与官网不一致的 query、body 与响应层级。
-- 补充请求序列化、动态 AppKey、部分限流、响应解析及错误响应测试，并通过`go test ./...`和`go vet ./...`。
+- `Tag.GetCount`、`Tag.GetQuota`和`Status.PlanDetail`：修正参数编码，避免服务端收到错误的查询条件。
+- `Voice.Create`、`Voice.List`和`Image.UploadOppo`：修正请求或响应格式不一致导致的调用失败、字段丢失问题。
+- Tests：补充公开方法的请求序列化、Group Push 多应用结果、Batch Push 部分限流、响应解析及错误响应测试。
 
 ## [0.1.0] - 2026-03-20
 
