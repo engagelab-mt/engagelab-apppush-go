@@ -2,6 +2,7 @@ package engagelab
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
 	"strconv"
 	"strings"
@@ -57,6 +58,28 @@ type MessageStatusDetail struct {
 	SubAndroid  *MessageStatusAndroid `json:"sub_android,omitempty"`
 	SubIOS      *MessageStatusIOS     `json:"sub_ios,omitempty"`
 	SubHMOS     *MessageStatusHMOS    `json:"sub_hmos,omitempty"`
+}
+
+// UnmarshalJSON supports both the singular target/click keys used by
+// notification statistics and the plural targets/clicks keys used by the
+// other message types.
+func (d *MessageStatusDetail) UnmarshalJSON(data []byte) error {
+	type detailAlias MessageStatusDetail
+	payload := struct {
+		*detailAlias
+		Targets *int64 `json:"targets"`
+		Clicks  *int64 `json:"clicks"`
+	}{detailAlias: (*detailAlias)(d)}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+	if payload.Targets != nil {
+		d.Target = *payload.Targets
+	}
+	if payload.Clicks != nil {
+		d.Click = *payload.Clicks
+	}
+	return nil
 }
 
 type MessageStatusAndroid struct {

@@ -1,6 +1,7 @@
 package engagelab
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -47,6 +48,37 @@ func (p DeviceSetParam) MarshalJSON() ([]byte, error) {
 		Tags:  tags,
 		Alias: p.Alias,
 	})
+}
+
+// UnmarshalJSON accepts both the tag update object and the empty-string form
+// used by the REST API to clear all tags.
+func (p *DeviceSetParam) UnmarshalJSON(data []byte) error {
+	var payload struct {
+		Tags  json.RawMessage `json:"tags"`
+		Alias string          `json:"alias"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+
+	p.Tags = nil
+	p.ClearTags = false
+	p.Alias = payload.Alias
+	tags := bytes.TrimSpace(payload.Tags)
+	if len(tags) == 0 || bytes.Equal(tags, []byte("null")) {
+		return nil
+	}
+	if bytes.Equal(tags, []byte(`""`)) {
+		p.ClearTags = true
+		return nil
+	}
+
+	var value DeviceSetTags
+	if err := json.Unmarshal(tags, &value); err != nil {
+		return fmt.Errorf("unmarshal device tags: %w", err)
+	}
+	p.Tags = &value
+	return nil
 }
 
 type DeviceTokenRegisterParam struct {

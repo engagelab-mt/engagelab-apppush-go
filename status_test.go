@@ -60,14 +60,23 @@ func TestStatusService_MessageDetail(t *testing.T) {
 		if r.URL.Query().Get("message_ids") != "msg1,msg2" {
 			t.Errorf("message_ids = %q", r.URL.Query().Get("message_ids"))
 		}
-		encodeJSON(t, w, map[string]MessageStatusGetResult{
-			"msg1": {Targets: 1000, Sent: 990, Delivered: 900, Sub: &MessageStatusSub{
-				Notification: &MessageStatusDetail{SubHMOS: &MessageStatusHMOS{
-					HarmonyOS: &MessageStatusChannel{Delivered: 12},
-				}},
-				VoIP: &MessageStatusDetail{Delivered: 2},
-			}},
-			"msg2": {Targets: 500, Sent: 495, Delivered: 480},
+		encodeJSON(t, w, map[string]interface{}{
+			"msg1": map[string]interface{}{
+				"targets": 1000, "sent": 990, "delivered": 900,
+				"sub": map[string]interface{}{
+					"notification":  map[string]interface{}{"target": 11, "click": 12},
+					"message":       map[string]interface{}{"targets": 21, "clicks": 22},
+					"live_activity": map[string]interface{}{"targets": 31, "clicks": 32},
+					"voip": map[string]interface{}{
+						"targets": 41, "clicks": 42, "delivered": 2,
+						"sub_hmos": map[string]interface{}{
+							"harmonyos": map[string]interface{}{"delivered": 12},
+						},
+					},
+					"inapp_message": map[string]interface{}{"targets": 51, "clicks": 52},
+				},
+			},
+			"msg2": map[string]interface{}{"targets": 500, "sent": 495, "delivered": 480},
 		})
 	}))
 	defer ts.Close()
@@ -83,7 +92,12 @@ func TestStatusService_MessageDetail(t *testing.T) {
 	if result["msg1"].Targets != 1000 {
 		t.Errorf("msg1 targets = %d, want 1000", result["msg1"].Targets)
 	}
-	if result["msg1"].Sub.VoIP.Delivered != 2 || result["msg1"].Sub.Notification.SubHMOS.HarmonyOS.Delivered != 12 {
+	if result["msg1"].Sub.Notification.Target != 11 || result["msg1"].Sub.Notification.Click != 12 ||
+		result["msg1"].Sub.Message.Target != 21 || result["msg1"].Sub.Message.Click != 22 ||
+		result["msg1"].Sub.LiveActivity.Target != 31 || result["msg1"].Sub.LiveActivity.Click != 32 ||
+		result["msg1"].Sub.VoIP.Target != 41 || result["msg1"].Sub.VoIP.Click != 42 ||
+		result["msg1"].Sub.InAppMessage.Target != 51 || result["msg1"].Sub.InAppMessage.Click != 52 ||
+		result["msg1"].Sub.VoIP.Delivered != 2 || result["msg1"].Sub.VoIP.SubHMOS.HarmonyOS.Delivered != 12 {
 		t.Errorf("nested status fields were not decoded: %#v", result["msg1"].Sub)
 	}
 }

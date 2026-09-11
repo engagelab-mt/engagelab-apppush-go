@@ -35,6 +35,8 @@
 ### 修复
 
 - `Tag.GetCount`、`Tag.GetQuota`和`Status.PlanDetail`：修正参数编码，避免服务端收到错误的查询条件。
+- `Device.Set`：通过 JSON 构造`DeviceSetParam`时，正确解析标签增删对象和`tags:""`清空标签形式。
+- `Status.MessageDetail`：正确解析通知、自定义消息、Live Activity、VoIP 和应用内消息统计中的`target/click`及`targets/clicks`字段。
 - `Voice.Create`、`Voice.List`和`Image.UploadOppo`：修正请求或响应格式不一致导致的调用失败、字段丢失问题。
 - Tests：补充公开方法的请求序列化、Group Push 多应用结果、Batch Push 部分限流、响应解析及错误响应测试。
 

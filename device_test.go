@@ -144,6 +144,28 @@ func TestDeviceService_Set_ClearTags(t *testing.T) {
 	}
 }
 
+func TestDeviceSetParam_UnmarshalJSON(t *testing.T) {
+	t.Run("tag object", func(t *testing.T) {
+		var param DeviceSetParam
+		if err := json.Unmarshal([]byte(`{"tags":{"add":["vip"],"remove":["old"]},"alias":"user"}`), &param); err != nil {
+			t.Fatal(err)
+		}
+		if param.Tags == nil || len(param.Tags.Add) != 1 || param.Tags.Add[0] != "vip" || len(param.Tags.Remove) != 1 || param.Alias != "user" {
+			t.Fatalf("unexpected param: %#v", param)
+		}
+	})
+
+	t.Run("clear tags", func(t *testing.T) {
+		var param DeviceSetParam
+		if err := json.Unmarshal([]byte(`{"tags":""}`), &param); err != nil {
+			t.Fatal(err)
+		}
+		if !param.ClearTags || param.Tags != nil {
+			t.Fatalf("unexpected param: %#v", param)
+		}
+	})
+}
+
 func TestDeviceService_Delete(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
