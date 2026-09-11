@@ -12,6 +12,10 @@ type TagsGetResult struct {
 	Tags []string `json:"tags"`
 }
 
+type TagStatusGetResult struct {
+	Result bool `json:"result"`
+}
+
 // TagSetParam sets registration_ids for a tag.
 type TagSetParam struct {
 	RegistrationIDs *TagRegistrationIDs `json:"registration_ids"`
@@ -81,12 +85,12 @@ func (s *TagService) Delete(ctx context.Context, tag string, platforms []string)
 
 // GetCount returns the count of devices for given tags and platforms.
 // GET /v4/tags_count?tags={tags}&platform={platforms}
-func (s *TagService) GetCount(ctx context.Context, tags []string, platforms []string) (*TagsCountGetResult, error) {
+func (s *TagService) GetCount(ctx context.Context, tags []string, platform string) (*TagsCountGetResult, error) {
 	query := url.Values{}
-	query.Set("tags", strings.Join(tags, ","))
-	if len(platforms) > 0 {
-		query.Set("platform", strings.Join(platforms, ","))
+	for _, tag := range tags {
+		query.Add("tags", tag)
 	}
+	query.Set("platform", platform)
 	var result TagsCountGetResult
 	err := s.client.doGet(ctx, "/v4/tags_count", query, &result)
 	if err != nil {
@@ -97,8 +101,8 @@ func (s *TagService) GetCount(ctx context.Context, tags []string, platforms []st
 
 // GetDeviceStatus checks if a registration ID has a specific tag.
 // GET /v4/tags/{tag}/registration_ids/{registration_id}
-func (s *TagService) GetDeviceStatus(ctx context.Context, tag, registrationID string) (*TagsGetResult, error) {
-	var result TagsGetResult
+func (s *TagService) GetDeviceStatus(ctx context.Context, tag, registrationID string) (*TagStatusGetResult, error) {
+	var result TagStatusGetResult
 	err := s.client.doGet(ctx, fmt.Sprintf("/v4/tags/%s/registration_ids/%s", tag, registrationID), nil, &result)
 	if err != nil {
 		return nil, err
@@ -108,14 +112,12 @@ func (s *TagService) GetDeviceStatus(ctx context.Context, tag, registrationID st
 
 // GetQuota returns tag/alias quota information.
 // GET /v4/tags/quota-info?tags={tags}&platform={platforms}
-func (s *TagService) GetQuota(ctx context.Context, tags []string, platforms []string) (*TagQuotaGetResult, error) {
+func (s *TagService) GetQuota(ctx context.Context, tags []string, platform string) (*TagQuotaGetResult, error) {
 	query := url.Values{}
-	if len(tags) > 0 {
-		query.Set("tags", strings.Join(tags, ","))
+	for _, tag := range tags {
+		query.Add("tags", tag)
 	}
-	if len(platforms) > 0 {
-		query.Set("platform", strings.Join(platforms, ","))
-	}
+	query.Set("platform", platform)
 	var result TagQuotaGetResult
 	err := s.client.doGet(ctx, "/v4/tags/quota-info", query, &result)
 	if err != nil {

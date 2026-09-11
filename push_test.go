@@ -20,12 +20,16 @@ func TestPushService_Send(t *testing.T) {
 
 		body, _ := io.ReadAll(r.Body)
 		var param PushParam
-		json.Unmarshal(body, &param)
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if param.From != "test-app" {
 			t.Errorf("From = %q, want %q", param.From, "test-app")
 		}
 
-		json.NewEncoder(w).Encode(PushResult{MsgID: "msg_001", RequestID: "req_001"})
+		if err := json.NewEncoder(w).Encode(PushResult{MsgID: "msg_001", RequestID: "req_001"}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -54,7 +58,7 @@ func TestPushService_Send(t *testing.T) {
 func TestPushService_Send_Error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		encodeJSON(t, w, map[string]interface{}{
 			"error": map[string]interface{}{"code": 2002, "message": "invalid param"},
 		})
 	}))
@@ -81,11 +85,13 @@ func TestPushService_SendRaw(t *testing.T) {
 		}
 		body, _ := io.ReadAll(r.Body)
 		var raw map[string]interface{}
-		json.Unmarshal(body, &raw)
+		if err := json.Unmarshal(body, &raw); err != nil {
+			t.Fatal(err)
+		}
 		if raw["custom_key"] != "custom_value" {
 			t.Errorf("raw body missing custom_key")
 		}
-		json.NewEncoder(w).Encode(PushResult{MsgID: "raw_001"})
+		encodeJSON(t, w, PushResult{MsgID: "raw_001"})
 	}))
 	defer ts.Close()
 
@@ -104,7 +110,7 @@ func TestPushService_Validate(t *testing.T) {
 		if r.URL.Path != "/v4/push/validate" {
 			t.Errorf("path = %s, want /v4/push/validate", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(PushResult{MsgID: "validate_001"})
+		encodeJSON(t, w, PushResult{MsgID: "validate_001"})
 	}))
 	defer ts.Close()
 
@@ -132,7 +138,7 @@ func TestPushService_Withdraw(t *testing.T) {
 		if r.URL.Path != "/v4/push/withdraw/msg123" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(PushWithdrawResult{MsgID: "msg123"})
+		encodeJSON(t, w, PushWithdrawResult{MsgID: "msg123"})
 	}))
 	defer ts.Close()
 
@@ -151,9 +157,12 @@ func TestPushService_BatchByRegID(t *testing.T) {
 		if r.URL.Path != "/v4/batch/push/regid" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(BatchPushResult{
+		encodeJSON(t, w, BatchPushResult{
+			RateLimitInfo: &BatchPushRateLimitInfo{
+				Message: "Some requests were rate limited during batch processing", RateLimitOccurred: true,
+			},
 			Results: map[string]BatchPushSingleResult{
-				"regid1": {Target: "regid1", Success: true, MsgID: 100},
+				"regid1": {Target: "regid1", Success: false, Error: &BatchPushError{Code: 23008, Message: "Rate limit exceeded for the API"}},
 			},
 		})
 	}))
@@ -172,8 +181,11 @@ func TestPushService_BatchByRegID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if r, ok := result.Results["regid1"]; !ok || !r.Success {
-		t.Error("batch result missing or not successful for regid1")
+	if r, ok := result.Results["regid1"]; !ok || r.Error == nil || r.Error.Code != 23008 {
+		t.Error("batch result missing rate-limit error for regid1")
+	}
+	if result.RateLimitInfo == nil || !result.RateLimitInfo.RateLimitOccurred {
+		t.Error("batch rate_limit_info was not decoded")
 	}
 }
 
@@ -182,7 +194,7 @@ func TestPushService_BatchByAlias(t *testing.T) {
 		if r.URL.Path != "/v4/batch/push/alias" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(BatchPushResult{
+		encodeJSON(t, w, BatchPushResult{
 			Results: map[string]BatchPushSingleResult{
 				"alias1": {Target: "alias1", Success: true, MsgID: 200},
 			},
@@ -240,7 +252,9 @@ func TestPushParam_JSONSerialization(t *testing.T) {
 	}
 
 	var decoded map[string]interface{}
-	json.Unmarshal(data, &decoded)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
 
 	if decoded["from"] != "sender" {
 		t.Errorf("from = %v", decoded["from"])

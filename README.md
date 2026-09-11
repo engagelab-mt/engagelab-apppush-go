@@ -65,6 +65,8 @@ func main() {
 | `HongKong` | 香港 | `https://pushapi-hk.engagelab.com` |
 | `Virginia` | 美国弗吉尼亚 | `https://pushapi-usva.engagelab.com` |
 | `Frankfurt` | 德国法兰克福 | `https://pushapi-defra.engagelab.com` |
+| `Japan` | 日本 | `https://pushapi-jpn.engagelab.com` |
+| `Brazil` | 巴西 | `https://pushapi-bra.engagelab.com` |
 
 ## API 模块
 
@@ -94,8 +96,10 @@ groupClient.Send(ctx, param)
 ```go
 client.Device.Get(ctx, registrationID)         // 查询设备信息
 client.Device.Set(ctx, registrationID, param)  // 设置设备标签/别名
+client.Device.Set(ctx, registrationID, &engagelab.DeviceSetParam{ClearTags: true}) // 清空全部标签
 client.Device.Delete(ctx, registrationID)      // 删除设备
 client.Device.GetStatus(ctx, param)            // 查询设备在线状态
+client.Device.RegisterToken(ctx, param)        // Token 换取 Registration ID
 ```
 
 ### Tag — 标签
@@ -104,9 +108,9 @@ client.Device.GetStatus(ctx, param)            // 查询设备在线状态
 client.Tag.List(ctx)                                    // 获取标签列表
 client.Tag.Set(ctx, tag, param)                         // 添加/移除标签设备
 client.Tag.Delete(ctx, tag, platforms)                   // 删除标签
-client.Tag.GetCount(ctx, tags, platforms)                // 查询标签设备数
+client.Tag.GetCount(ctx, tags, platform)                 // 查询标签设备数
 client.Tag.GetDeviceStatus(ctx, tag, registrationID)     // 查询设备标签绑定状态
-client.Tag.GetQuota(ctx, tags, platforms)                // 查询标签配额
+client.Tag.GetQuota(ctx, tags, platform)                 // 查询标签配额
 ```
 
 ### Alias — 别名
@@ -134,7 +138,7 @@ client.Status.Users(ctx, timeUnit, start, duration)         // 用户统计
 client.Status.MessageDetail(ctx, messageIDs)                 // 消息送达统计
 client.Status.MessageLifecycle(ctx, msgID, registrationIDs)  // 消息生命周期
 client.Status.BatchMessageDetail(ctx, messageIDs)            // 批量消息统计
-client.Status.PlanDetail(ctx, planID, messageIDs)            // 推送计划统计
+client.Status.PlanDetail(ctx, planIDs, startDate, endDate)    // 推送计划统计
 ```
 
 ### Plan — 推送计划
@@ -150,7 +154,7 @@ client.Plan.BatchDelete(ctx, planIDs)                          // 批量删除�
 ### Voice — 语音/TTS
 
 ```go
-client.Voice.Create(ctx, param)       // 创建语音模板
+client.Voice.Create(ctx, language, filePath) // 上传语音文件
 client.Voice.List(ctx)                // 获取语音模板列表
 client.Voice.Get(ctx, language)       // 获取语音模板
 client.Voice.Delete(ctx, language)    // 删除语音模板
@@ -159,8 +163,15 @@ client.Voice.Delete(ctx, language)    // 删除语音模板
 ### Image — 图片
 
 ```go
-client.Image.UploadOppo(ctx, filePath)                    // 上传 OPPO 大图 (文件路径)
-client.Image.UploadOppoFromReader(ctx, filename, reader)  // 上传 OPPO 大图 (io.Reader)
+client.Image.UploadOppo(ctx, &engagelab.OppoImageParam{
+    BigPictureURL: "https://example.com/image.jpg",
+}) // 大图、小图 URL 只能传一个
+```
+
+### App — 应用信息
+
+```go
+client.App.GetVIPStatus(ctx) // 查询 VIP 状态
 ```
 
 ## 错误处理

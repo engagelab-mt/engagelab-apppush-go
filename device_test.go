@@ -20,17 +20,21 @@ func TestDeviceService_GetStatus(t *testing.T) {
 
 		body, _ := io.ReadAll(r.Body)
 		var param DeviceStatusGetParam
-		json.Unmarshal(body, &param)
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if len(param.RegistrationIDs) != 2 {
 			t.Errorf("registration_ids len = %d, want 2", len(param.RegistrationIDs))
 		}
 
 		online := true
 		offline := false
-		json.NewEncoder(w).Encode([]DeviceStatusGetResult{
+		if err := json.NewEncoder(w).Encode([]DeviceStatusGetResult{
 			{RegistrationID: "reg1", Online: &online, LastOnlineTime: "2025-01-01 12:00:00"},
 			{RegistrationID: "reg2", Online: &offline, LastOnlineTime: "2025-01-01 11:00:00"},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -60,10 +64,12 @@ func TestDeviceService_Get(t *testing.T) {
 		if r.URL.Path != "/v4/devices/reg123" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(DeviceGetResult{
+		if err := json.NewEncoder(w).Encode(DeviceGetResult{
 			Tags:  []string{"tag1", "tag2"},
 			Alias: "user_alias",
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -89,13 +95,18 @@ func TestDeviceService_Set(t *testing.T) {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		body, _ := io.ReadAll(r.Body)
-		var param DeviceSetParam
-		json.Unmarshal(body, &param)
+		var param struct {
+			Tags  DeviceSetTags `json:"tags"`
+			Alias string        `json:"alias"`
+		}
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if param.Alias != "new_alias" {
 			t.Errorf("alias = %q, want %q", param.Alias, "new_alias")
 		}
 		if len(param.Tags.Add) != 1 || param.Tags.Add[0] != "vip" {
-			t.Error("tags add should contain 'vip'")
+			t.Errorf("unexpected tags: %#v", param.Tags)
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -111,6 +122,48 @@ func TestDeviceService_Set(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func TestDeviceService_Set_ClearTags(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var param map[string]interface{}
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
+		if tags, ok := param["tags"].(string); !ok || tags != "" {
+			t.Errorf("unexpected tags: %#v", param["tags"])
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	c := NewClient("k", "s", WithBaseURL(ts.URL))
+	if err := c.Device.Set(context.Background(), "reg123", &DeviceSetParam{ClearTags: true}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeviceSetParam_UnmarshalJSON(t *testing.T) {
+	t.Run("tag object", func(t *testing.T) {
+		var param DeviceSetParam
+		if err := json.Unmarshal([]byte(`{"tags":{"add":["vip"],"remove":["old"]},"alias":"user"}`), &param); err != nil {
+			t.Fatal(err)
+		}
+		if param.Tags == nil || len(param.Tags.Add) != 1 || param.Tags.Add[0] != "vip" || len(param.Tags.Remove) != 1 || param.Alias != "user" {
+			t.Fatalf("unexpected param: %#v", param)
+		}
+	})
+
+	t.Run("clear tags", func(t *testing.T) {
+		var param DeviceSetParam
+		if err := json.Unmarshal([]byte(`{"tags":""}`), &param); err != nil {
+			t.Fatal(err)
+		}
+		if !param.ClearTags || param.Tags != nil {
+			t.Fatalf("unexpected param: %#v", param)
+		}
+	})
 }
 
 func TestDeviceService_Delete(t *testing.T) {
@@ -135,9 +188,11 @@ func TestDeviceService_Delete(t *testing.T) {
 func TestDeviceService_GetStatus_Error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": map[string]interface{}{"code": 1004, "message": "forbidden"},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -154,5 +209,35 @@ func TestDeviceService_GetStatus_Error(t *testing.T) {
 	}
 	if apiErr.StatusCode != 403 {
 		t.Errorf("status = %d, want 403", apiErr.StatusCode)
+	}
+}
+
+func TestDeviceService_RegisterToken(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v4/devices/token/registration_id" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		var param DeviceTokenRegisterParam
+		if err := json.NewDecoder(r.Body).Decode(&param); err != nil {
+			t.Fatal(err)
+		}
+		if param.Platform != "android" || len(param.Tokens) != 1 {
+			t.Errorf("unexpected param: %#v", param)
+		}
+		if err := json.NewEncoder(w).Encode(DeviceTokenRegisterResult{Results: []DeviceTokenResult{{
+			Token: "t1", RegistrationID: "r1", IsNew: true, Code: 0,
+		}, {
+			Token: "", IsNew: false, Code: 21003, Message: "invalid fcm token format",
+		}}}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer ts.Close()
+	c := NewClient("k", "s", WithBaseURL(ts.URL))
+	result, err := c.Device.RegisterToken(context.Background(), &DeviceTokenRegisterParam{
+		Platform: "android", Tokens: []string{"t1"},
+	})
+	if err != nil || len(result.Results) != 2 || result.Results[0].RegistrationID != "r1" || result.Results[1].Code != 21003 {
+		t.Fatalf("result=%#v err=%v", result, err)
 	}
 }

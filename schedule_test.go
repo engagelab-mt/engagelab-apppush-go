@@ -16,11 +16,13 @@ func TestScheduleService_Create(t *testing.T) {
 		}
 		body, _ := io.ReadAll(r.Body)
 		var param SchedulePushParam
-		json.Unmarshal(body, &param)
+		if err := json.Unmarshal(body, &param); err != nil {
+			t.Fatal(err)
+		}
 		if param.Name != "daily_push" {
 			t.Errorf("name = %q", param.Name)
 		}
-		json.NewEncoder(w).Encode(SchedulePushResult{
+		encodeJSON(t, w, SchedulePushResult{
 			ScheduleID: "sched_001",
 			Name:       "daily_push",
 		})
@@ -57,7 +59,7 @@ func TestScheduleService_Update(t *testing.T) {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		enabled := true
-		json.NewEncoder(w).Encode(SchedulePushGetResult{
+		encodeJSON(t, w, SchedulePushGetResult{
 			ScheduleID: "sched_001",
 			Name:       "updated_push",
 			Enabled:    &enabled,
@@ -99,7 +101,7 @@ func TestScheduleService_Get(t *testing.T) {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
 		enabled := true
-		json.NewEncoder(w).Encode([]SchedulePushGetResult{
+		encodeJSON(t, w, []SchedulePushGetResult{
 			{ScheduleID: "sched_001", Name: "test", Enabled: &enabled},
 		})
 	}))
@@ -126,7 +128,7 @@ func TestScheduleService_List(t *testing.T) {
 		if r.URL.Query().Get("page") != "1" {
 			t.Errorf("page = %q", r.URL.Query().Get("page"))
 		}
-		json.NewEncoder(w).Encode(SchedulePushListResult{
+		encodeJSON(t, w, SchedulePushListResult{
 			TotalCount:  10,
 			TotalPages:  2,
 			CurrentPage: 1,
@@ -155,7 +157,7 @@ func TestScheduleService_GetMsgIDs(t *testing.T) {
 		if r.URL.Path != "/v4/schedules/sched_001/msg-ids" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(SchedulePushDetailGetResult{
+		encodeJSON(t, w, SchedulePushDetailGetResult{
 			Count:  3,
 			MsgIDs: []interface{}{"m1", "m2", "m3"},
 		})

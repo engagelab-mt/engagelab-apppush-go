@@ -16,19 +16,24 @@ type SchedulePushParam struct {
 }
 
 type ScheduleTrigger struct {
-	Single     *TriggerSingle     `json:"single,omitempty"`
-	Periodical *TriggerPeriodical `json:"periodical,omitempty"`
+	Single      *TriggerSingle      `json:"single,omitempty"`
+	Periodical  *TriggerPeriodical  `json:"periodical,omitempty"`
+	Intelligent *TriggerIntelligent `json:"intelligent,omitempty"`
+}
+
+type TriggerIntelligent struct {
+	BackupTime string `json:"backup_time,omitempty"`
 }
 
 type TriggerSingle struct {
-	Time     string `json:"time,omitempty"`     // "yyyy-MM-dd HH:mm:ss"
+	Time     string `json:"time,omitempty"` // "yyyy-MM-dd HH:mm:ss"
 	ZoneType *int   `json:"zone_type,omitempty"`
 }
 
 type TriggerPeriodical struct {
-	Start     string   `json:"start,omitempty"`     // "yyyy-MM-dd HH:mm:ss"
-	End       string   `json:"end,omitempty"`       // "yyyy-MM-dd HH:mm:ss"
-	Time      string   `json:"time,omitempty"`      // "HH:mm:ss"
+	Start     string   `json:"start,omitempty"` // "yyyy-MM-dd HH:mm:ss"
+	End       string   `json:"end,omitempty"`   // "yyyy-MM-dd HH:mm:ss"
+	Time      string   `json:"time,omitempty"`  // "HH:mm:ss"
 	Frequency *int     `json:"frequency,omitempty"`
 	TimeUnit  string   `json:"time_unit,omitempty"` // "day", "WEEK", "MONTH"
 	Point     []string `json:"point,omitempty"`

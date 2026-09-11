@@ -1,7 +1,10 @@
 package engagelab
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -25,8 +28,75 @@ type DeviceGetResult struct {
 
 // DeviceSetParam sets tags and alias for a device.
 type DeviceSetParam struct {
-	Tags  *DeviceSetTags `json:"tags,omitempty"`
-	Alias string         `json:"alias,omitempty"`
+	Tags      *DeviceSetTags `json:"-"`
+	ClearTags bool           `json:"-"`
+	Alias     string         `json:"alias,omitempty"`
+}
+
+// MarshalJSON emits tags as an object, or as an empty string when ClearTags is true.
+func (p DeviceSetParam) MarshalJSON() ([]byte, error) {
+	var tags interface{}
+	if p.ClearTags {
+		tags = ""
+	} else if p.Tags != nil {
+		tags = p.Tags
+	}
+	return json.Marshal(struct {
+		Tags  interface{} `json:"tags,omitempty"`
+		Alias string      `json:"alias,omitempty"`
+	}{
+		Tags:  tags,
+		Alias: p.Alias,
+	})
+}
+
+// UnmarshalJSON accepts both the tag update object and the empty-string form
+// used by the REST API to clear all tags.
+func (p *DeviceSetParam) UnmarshalJSON(data []byte) error {
+	var payload struct {
+		Tags  json.RawMessage `json:"tags"`
+		Alias string          `json:"alias"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+
+	p.Tags = nil
+	p.ClearTags = false
+	p.Alias = payload.Alias
+	tags := bytes.TrimSpace(payload.Tags)
+	if len(tags) == 0 || bytes.Equal(tags, []byte("null")) {
+		return nil
+	}
+	if bytes.Equal(tags, []byte(`""`)) {
+		p.ClearTags = true
+		return nil
+	}
+
+	var value DeviceSetTags
+	if err := json.Unmarshal(tags, &value); err != nil {
+		return fmt.Errorf("unmarshal device tags: %w", err)
+	}
+	p.Tags = &value
+	return nil
+}
+
+type DeviceTokenRegisterParam struct {
+	Platform       string   `json:"platform"`
+	Tokens         []string `json:"tokens"`
+	APNSProduction *bool    `json:"apns_production,omitempty"`
+}
+
+type DeviceTokenRegisterResult struct {
+	Results []DeviceTokenResult `json:"results"`
+}
+
+type DeviceTokenResult struct {
+	Token          string `json:"token"`
+	RegistrationID string `json:"registration_id,omitempty"`
+	IsNew          bool   `json:"is_new"`
+	Code           int    `json:"code"`
+	Message        string `json:"message,omitempty"`
 }
 
 type DeviceSetTags struct {
@@ -73,4 +143,17 @@ func (s *DeviceService) Set(ctx context.Context, registrationID string, param *D
 // DELETE /v4/devices/{registration_id}
 func (s *DeviceService) Delete(ctx context.Context, registrationID string) error {
 	return s.client.doDelete(ctx, fmt.Sprintf("/v4/devices/%s", registrationID), nil)
+}
+
+// RegisterToken registers vendor tokens and returns their EngageLab registration IDs.
+// POST /v4/devices/token/registration_id
+func (s *DeviceService) RegisterToken(ctx context.Context, param *DeviceTokenRegisterParam) (*DeviceTokenRegisterResult, error) {
+	if param == nil {
+		return nil, errors.New("device token register param is required")
+	}
+	var result DeviceTokenRegisterResult
+	if err := s.client.doPost(ctx, "/v4/devices/token/registration_id", param, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
