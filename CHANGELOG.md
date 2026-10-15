@@ -34,6 +34,7 @@
 
 ### 修复
 
+- `Schedule.Get`：完整保留定时任务详情返回的推送目标、平台、通知、自定义消息、Live Activity、VoIP 和 options；将扁平的`audience/platform/...`响应映射到现有`PushParam.To/Body`，并继续兼容`to/body`响应。
 - `Tag.GetCount`、`Tag.GetQuota`和`Status.PlanDetail`：修正参数编码，避免服务端收到错误的查询条件。
 - `Device.Set`：通过 JSON 构造`DeviceSetParam`时，正确解析标签增删对象和`tags:""`清空标签形式。
 - `Status.MessageDetail`：正确解析通知、自定义消息、Live Activity、VoIP 和应用内消息统计中的`target/click`及`targets/clicks`字段。
