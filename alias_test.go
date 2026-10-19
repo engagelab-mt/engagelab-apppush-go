@@ -19,9 +19,11 @@ func TestAliasService_Get(t *testing.T) {
 		if r.URL.Query().Get("platform") != "android,ios" {
 			t.Errorf("platform = %q", r.URL.Query().Get("platform"))
 		}
-		json.NewEncoder(w).Encode(AliasStatusGetResult{
+		if err := json.NewEncoder(w).Encode(AliasStatusGetResult{
 			RegistrationIDs: []string{"reg1", "reg2", "reg3"},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 
@@ -40,9 +42,11 @@ func TestAliasService_Get_NoPlatform(t *testing.T) {
 		if r.URL.RawQuery != "" {
 			t.Errorf("expected no query, got %q", r.URL.RawQuery)
 		}
-		json.NewEncoder(w).Encode(AliasStatusGetResult{
+		if err := json.NewEncoder(w).Encode(AliasStatusGetResult{
 			RegistrationIDs: []string{"reg1"},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer ts.Close()
 

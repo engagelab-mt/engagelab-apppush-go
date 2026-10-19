@@ -3,6 +3,7 @@ package engagelab
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"time"
 )
@@ -12,9 +13,39 @@ type GroupPushParam = PushParam
 
 // GroupPushResult is the response for a group push request.
 type GroupPushResult struct {
-	GroupMsgID string                         `json:"group_msgid,omitempty"`
-	Successes  map[string]PushResult          `json:"-"`
+	GroupMsgID string                          `json:"group_msgid,omitempty"`
+	Successes  map[string]PushResult           `json:"-"`
 	Errors     map[string]GroupPushErrorDetail `json:"-"`
+}
+
+func (r *GroupPushResult) UnmarshalJSON(data []byte) error {
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+	r.Successes = make(map[string]PushResult)
+	r.Errors = make(map[string]GroupPushErrorDetail)
+	for key, raw := range payload {
+		if key == "group_msgid" {
+			if err := json.Unmarshal(raw, &r.GroupMsgID); err != nil {
+				return err
+			}
+			continue
+		}
+		var apiError struct {
+			Error *GroupPushErrorDetail `json:"error"`
+		}
+		if err := json.Unmarshal(raw, &apiError); err == nil && apiError.Error != nil {
+			r.Errors[key] = *apiError.Error
+			continue
+		}
+		var success PushResult
+		if err := json.Unmarshal(raw, &success); err != nil {
+			return err
+		}
+		r.Successes[key] = success
+	}
+	return nil
 }
 
 type GroupPushErrorDetail struct {

@@ -2,7 +2,6 @@ package engagelab
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +21,7 @@ func TestStatusService_Users(t *testing.T) {
 		if r.URL.Query().Get("duration") != "7" {
 			t.Errorf("duration = %q", r.URL.Query().Get("duration"))
 		}
-		json.NewEncoder(w).Encode(UserStatusGetResult{
+		encodeJSON(t, w, UserStatusGetResult{
 			TimeUnit: "DAY",
 			Start:    "2025-01-01",
 			Duration: 7,
@@ -61,9 +60,23 @@ func TestStatusService_MessageDetail(t *testing.T) {
 		if r.URL.Query().Get("message_ids") != "msg1,msg2" {
 			t.Errorf("message_ids = %q", r.URL.Query().Get("message_ids"))
 		}
-		json.NewEncoder(w).Encode(map[string]MessageStatusGetResult{
-			"msg1": {Targets: 1000, Sent: 990, Delivered: 900},
-			"msg2": {Targets: 500, Sent: 495, Delivered: 480},
+		encodeJSON(t, w, map[string]interface{}{
+			"msg1": map[string]interface{}{
+				"targets": 1000, "sent": 990, "delivered": 900,
+				"sub": map[string]interface{}{
+					"notification":  map[string]interface{}{"target": 11, "click": 12},
+					"message":       map[string]interface{}{"targets": 21, "clicks": 22},
+					"live_activity": map[string]interface{}{"targets": 31, "clicks": 32},
+					"voip": map[string]interface{}{
+						"targets": 41, "clicks": 42, "delivered": 2,
+						"sub_hmos": map[string]interface{}{
+							"harmonyos": map[string]interface{}{"delivered": 12},
+						},
+					},
+					"inapp_message": map[string]interface{}{"targets": 51, "clicks": 52},
+				},
+			},
+			"msg2": map[string]interface{}{"targets": 500, "sent": 495, "delivered": 480},
 		})
 	}))
 	defer ts.Close()
@@ -79,6 +92,14 @@ func TestStatusService_MessageDetail(t *testing.T) {
 	if result["msg1"].Targets != 1000 {
 		t.Errorf("msg1 targets = %d, want 1000", result["msg1"].Targets)
 	}
+	if result["msg1"].Sub.Notification.Target != 11 || result["msg1"].Sub.Notification.Click != 12 ||
+		result["msg1"].Sub.Message.Target != 21 || result["msg1"].Sub.Message.Click != 22 ||
+		result["msg1"].Sub.LiveActivity.Target != 31 || result["msg1"].Sub.LiveActivity.Click != 32 ||
+		result["msg1"].Sub.VoIP.Target != 41 || result["msg1"].Sub.VoIP.Click != 42 ||
+		result["msg1"].Sub.InAppMessage.Target != 51 || result["msg1"].Sub.InAppMessage.Click != 52 ||
+		result["msg1"].Sub.VoIP.Delivered != 2 || result["msg1"].Sub.VoIP.SubHMOS.HarmonyOS.Delivered != 12 {
+		t.Errorf("nested status fields were not decoded: %#v", result["msg1"].Sub)
+	}
 }
 
 func TestStatusService_MessageLifecycle(t *testing.T) {
@@ -89,7 +110,7 @@ func TestStatusService_MessageLifecycle(t *testing.T) {
 		if r.URL.Query().Get("message_id") != "msg1" {
 			t.Errorf("message_id = %q", r.URL.Query().Get("message_id"))
 		}
-		json.NewEncoder(w).Encode(map[string]MessageLifecycleGetResult{
+		encodeJSON(t, w, map[string]MessageLifecycleGetResult{
 			"reg1": {Status: "delivered"},
 			"reg2": {Status: "failed", ErrorMessage: "device offline"},
 		})
@@ -114,9 +135,7 @@ func TestStatusService_BatchMessageDetail(t *testing.T) {
 		if r.URL.Path != "/v4/status/batch/message" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(map[string]MessageStatusGetResult{
-			"msg1": {Targets: 100, Sent: 99},
-		})
+		encodeJSON(t, w, []MessageLifecycleGetResult{{MessageID: "msg1", Status: "sent"}})
 	}))
 	defer ts.Close()
 
@@ -125,8 +144,8 @@ func TestStatusService_BatchMessageDetail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result["msg1"].Sent != 99 {
-		t.Errorf("msg1 sent = %d, want 99", result["msg1"].Sent)
+	if len(result) != 1 || result[0].MessageID != "msg1" {
+		t.Errorf("unexpected result: %#v", result)
 	}
 }
 
@@ -135,17 +154,17 @@ func TestStatusService_PlanDetail(t *testing.T) {
 		if r.URL.Path != "/v4/status/plan/detail" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		if r.URL.Query().Get("plan_id") != "plan1" {
-			t.Errorf("plan_id = %q", r.URL.Query().Get("plan_id"))
+		if r.URL.Query().Get("plan_ids") != "plan1" {
+			t.Errorf("plan_ids = %q", r.URL.Query().Get("plan_ids"))
 		}
-		json.NewEncoder(w).Encode(map[string]MessageStatusGetResult{
+		encodeJSON(t, w, map[string]MessageStatusGetResult{
 			"msg1": {Targets: 200, Delivered: 180},
 		})
 	}))
 	defer ts.Close()
 
 	c := NewClient("k", "s", WithBaseURL(ts.URL))
-	result, err := c.Status.PlanDetail(context.Background(), "plan1", []string{"msg1"})
+	result, err := c.Status.PlanDetail(context.Background(), []string{"plan1"}, "2026-01-01", "2026-01-02")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,17 +173,17 @@ func TestStatusService_PlanDetail(t *testing.T) {
 	}
 }
 
-func TestStatusService_PlanDetail_NoMsgIDs(t *testing.T) {
+func TestStatusService_PlanDetail_Query(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("message_ids") != "" {
-			t.Errorf("message_ids should be empty, got %q", r.URL.Query().Get("message_ids"))
+		if r.URL.Query().Get("start_date") != "2026-01-01" || r.URL.Query().Get("end_date") != "2026-01-31" {
+			t.Errorf("unexpected query: %s", r.URL.RawQuery)
 		}
-		json.NewEncoder(w).Encode(map[string]MessageStatusGetResult{})
+		encodeJSON(t, w, map[string]MessageStatusGetResult{})
 	}))
 	defer ts.Close()
 
 	c := NewClient("k", "s", WithBaseURL(ts.URL))
-	_, err := c.Status.PlanDetail(context.Background(), "plan1", nil)
+	_, err := c.Status.PlanDetail(context.Background(), []string{"plan1"}, "2026-01-01", "2026-01-31")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

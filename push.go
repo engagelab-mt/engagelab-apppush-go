@@ -15,11 +15,12 @@ type PushParam struct {
 }
 
 type PushBody struct {
-	Platform     interface{}          `json:"platform,omitempty"` // "all" or []string{"android","ios","hmos"}
-	Notification *NotificationMessage `json:"notification,omitempty"`
-	Message      *CustomMessage       `json:"message,omitempty"`
-	LiveActivity *LiveActivityMessage `json:"live_activity,omitempty"`
-	Options      *Options             `json:"options,omitempty"`
+	Platform     interface{}            `json:"platform,omitempty"` // "all" or []string{"android","ios","hmos"}
+	Notification *NotificationMessage   `json:"notification,omitempty"`
+	Message      *CustomMessage         `json:"message,omitempty"`
+	LiveActivity *LiveActivityMessage   `json:"live_activity,omitempty"`
+	VoIP         map[string]interface{} `json:"voip,omitempty"`
+	Options      *Options               `json:"options,omitempty"`
 }
 
 // PushTo specifies target audience for push.
@@ -39,14 +40,14 @@ type Seg struct {
 
 // NotificationMessage is the notification payload.
 type NotificationMessage struct {
-	Alert   string               `json:"alert,omitempty"`
+	Alert   interface{}          `json:"alert,omitempty"`
 	Android *AndroidNotification `json:"android,omitempty"`
 	IOS     *IOSNotification     `json:"ios,omitempty"`
 	Hmos    *HmosNotification    `json:"hmos,omitempty"`
 }
 
 type AndroidNotification struct {
-	Alert             string                 `json:"alert,omitempty"`
+	Alert             interface{}            `json:"alert,omitempty"`
 	Title             string                 `json:"title,omitempty"`
 	BuilderID         *int                   `json:"builder_id,omitempty"`
 	ChannelID         string                 `json:"channel_id,omitempty"`
@@ -62,9 +63,11 @@ type AndroidNotification struct {
 	SmallIcon         string                 `json:"small_icon,omitempty"`
 	Sound             string                 `json:"sound,omitempty"`
 	BadgeAddNum       *int                   `json:"badge_add_num,omitempty"`
+	BadgeSetNum       *int                   `json:"badge_set_num,omitempty"`
 	BadgeClass        string                 `json:"badge_class,omitempty"`
 	DisplayForeground string                 `json:"display_foreground,omitempty"`
 	GroupID           string                 `json:"group_id,omitempty"`
+	IsFold            *bool                  `json:"is_fold,omitempty"`
 }
 
 type AndroidIntent struct {
@@ -108,9 +111,11 @@ type HmosIntent struct {
 // CustomMessage is the custom/passthrough message payload.
 type CustomMessage struct {
 	Title       string                 `json:"title,omitempty"`
-	MsgContent  string                 `json:"msg_content,omitempty"`
+	MsgContent  interface{}            `json:"msg_content,omitempty"`
 	ContentType string                 `json:"content_type,omitempty"`
 	Extras      map[string]interface{} `json:"extras,omitempty"`
+	TestMessage *bool                  `json:"test_message,omitempty"`
+	ReceiptID   string                 `json:"receipt_id,omitempty"`
 }
 
 // LiveActivityMessage is for iOS Live Activity.
@@ -150,6 +155,7 @@ type Options struct {
 	EnhancMessage     *bool                  `json:"enhanc_message,omitempty"`
 	PlanID            string                 `json:"plan_id,omitempty"`
 	CID               string                 `json:"cid,omitempty"`
+	AutoTruncation    *bool                  `json:"auto_truncation,omitempty"`
 }
 
 // PushResult is the response for a push request.
@@ -179,13 +185,25 @@ type BatchPushRequest struct {
 }
 
 type BatchPushResult struct {
-	Results map[string]BatchPushSingleResult `json:"results,omitempty"`
+	Results       map[string]BatchPushSingleResult `json:"results,omitempty"`
+	RateLimitInfo *BatchPushRateLimitInfo          `json:"rate_limit_info,omitempty"`
 }
 
 type BatchPushSingleResult struct {
-	Target  string `json:"target,omitempty"`
-	Success bool   `json:"success"`
-	MsgID   int64  `json:"msg_id"`
+	Target  string          `json:"target,omitempty"`
+	Success bool            `json:"success"`
+	MsgID   int64           `json:"msg_id"`
+	Error   *BatchPushError `json:"error,omitempty"`
+}
+
+type BatchPushError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+type BatchPushRateLimitInfo struct {
+	Message           string `json:"message,omitempty"`
+	RateLimitOccurred bool   `json:"rate_limit_occurred"`
 }
 
 // --- PushService ---

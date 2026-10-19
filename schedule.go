@@ -2,6 +2,7 @@ package engagelab
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -16,19 +17,24 @@ type SchedulePushParam struct {
 }
 
 type ScheduleTrigger struct {
-	Single     *TriggerSingle     `json:"single,omitempty"`
-	Periodical *TriggerPeriodical `json:"periodical,omitempty"`
+	Single      *TriggerSingle      `json:"single,omitempty"`
+	Periodical  *TriggerPeriodical  `json:"periodical,omitempty"`
+	Intelligent *TriggerIntelligent `json:"intelligent,omitempty"`
+}
+
+type TriggerIntelligent struct {
+	BackupTime string `json:"backup_time,omitempty"`
 }
 
 type TriggerSingle struct {
-	Time     string `json:"time,omitempty"`     // "yyyy-MM-dd HH:mm:ss"
+	Time     string `json:"time,omitempty"` // "yyyy-MM-dd HH:mm:ss"
 	ZoneType *int   `json:"zone_type,omitempty"`
 }
 
 type TriggerPeriodical struct {
-	Start     string   `json:"start,omitempty"`     // "yyyy-MM-dd HH:mm:ss"
-	End       string   `json:"end,omitempty"`       // "yyyy-MM-dd HH:mm:ss"
-	Time      string   `json:"time,omitempty"`      // "HH:mm:ss"
+	Start     string   `json:"start,omitempty"` // "yyyy-MM-dd HH:mm:ss"
+	End       string   `json:"end,omitempty"`   // "yyyy-MM-dd HH:mm:ss"
+	Time      string   `json:"time,omitempty"`  // "HH:mm:ss"
 	Frequency *int     `json:"frequency,omitempty"`
 	TimeUnit  string   `json:"time_unit,omitempty"` // "day", "WEEK", "MONTH"
 	Point     []string `json:"point,omitempty"`
@@ -48,6 +54,71 @@ type SchedulePushGetResult struct {
 	Enabled    *bool            `json:"enabled,omitempty"`
 	Trigger    *ScheduleTrigger `json:"trigger,omitempty"`
 	Push       *PushParam       `json:"push,omitempty"`
+}
+
+// UnmarshalJSON accepts both the v4 push request shape (to/body) and the
+// flattened push shape returned by the schedule detail endpoint.
+func (r *SchedulePushGetResult) UnmarshalJSON(data []byte) error {
+	var response struct {
+		ScheduleID string           `json:"schedule_id,omitempty"`
+		Name       string           `json:"name,omitempty"`
+		Enabled    *bool            `json:"enabled,omitempty"`
+		Trigger    *ScheduleTrigger `json:"trigger,omitempty"`
+		Push       json.RawMessage  `json:"push,omitempty"`
+	}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return err
+	}
+
+	*r = SchedulePushGetResult{
+		ScheduleID: response.ScheduleID,
+		Name:       response.Name,
+		Enabled:    response.Enabled,
+		Trigger:    response.Trigger,
+	}
+	if len(response.Push) == 0 || string(response.Push) == "null" {
+		return nil
+	}
+
+	var compatible struct {
+		From         string                 `json:"from,omitempty"`
+		To           interface{}            `json:"to,omitempty"`
+		Body         *PushBody              `json:"body,omitempty"`
+		Audience     interface{}            `json:"audience,omitempty"`
+		RequestID    string                 `json:"request_id,omitempty"`
+		CustomArgs   map[string]interface{} `json:"custom_args,omitempty"`
+		Platform     interface{}            `json:"platform,omitempty"`
+		Notification *NotificationMessage   `json:"notification,omitempty"`
+		Message      *CustomMessage         `json:"message,omitempty"`
+		LiveActivity *LiveActivityMessage   `json:"live_activity,omitempty"`
+		VoIP         map[string]interface{} `json:"voip,omitempty"`
+		Options      *Options               `json:"options,omitempty"`
+	}
+	if err := json.Unmarshal(response.Push, &compatible); err != nil {
+		return err
+	}
+	if compatible.To == nil {
+		compatible.To = compatible.Audience
+	}
+	if compatible.Body == nil && (compatible.Platform != nil || compatible.Notification != nil ||
+		compatible.Message != nil || compatible.LiveActivity != nil || compatible.VoIP != nil || compatible.Options != nil) {
+		compatible.Body = &PushBody{
+			Platform:     compatible.Platform,
+			Notification: compatible.Notification,
+			Message:      compatible.Message,
+			LiveActivity: compatible.LiveActivity,
+			VoIP:         compatible.VoIP,
+			Options:      compatible.Options,
+		}
+	}
+	r.Push = &PushParam{
+		From:       compatible.From,
+		To:         compatible.To,
+		RequestID:  compatible.RequestID,
+		CustomArgs: compatible.CustomArgs,
+		Body:       compatible.Body,
+	}
+	return nil
 }
 
 // SchedulePushListResult is the paginated schedule list response.
