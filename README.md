@@ -229,3 +229,7 @@ client = engagelab.NewClient("key", "secret",
 ## 许可证
 
 MIT License
+
+## Native representative tests
+
+See [go native test instructions](testdata/NATIVE_TESTS.md) for standalone contract tests and parameterized QA/production integration tests.
